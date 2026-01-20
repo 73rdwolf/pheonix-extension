@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Essentials by Atlasssians",
-  "version": "2.2",
+  "version": "2.3",
   "description": "Premium dashboard with Gemini AI & Workspace integration.",
   "chrome_url_overrides": {
     "newtab": "index.html"

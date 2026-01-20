@@ -899,7 +899,9 @@ async function googleApiFetch(url, options = {}, retryCount = 0) {
 
     let response;
     if (useCache) {
-      response = await window.PerformanceUtils.cachedFetch(url, options, url, 30000);
+      // Pass skipCache option if present
+      const skipCache = options.skipCache === true;
+      response = await window.PerformanceUtils.cachedFetch(url, { ...options, skipCache }, url, 30000);
     } else {
       response = await fetch(url, options);
     }

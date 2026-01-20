@@ -17,20 +17,26 @@ const CACHE_TTL = 30000; // 30 seconds default
 async function cachedFetch(url, options = {}, cacheKey = null, ttl = CACHE_TTL) {
   const key = cacheKey || url;
   const now = Date.now();
-  
+
+  // Skip cache if requested
+  if (options.skipCache) {
+    console.log(`[Performance] Skipping cache for: ${key}`);
+    return fetch(url, options);
+  }
+
   // Check cache first
   const cached = requestCache.get(key);
   if (cached && (now - cached.timestamp) < ttl) {
     console.log(`[Performance] Cache hit: ${key}`);
     return cached.response.clone();
   }
-  
+
   // Check if request is already pending
   if (pendingRequests.has(key)) {
     console.log(`[Performance] Deduplicating request: ${key}`);
     return pendingRequests.get(key);
   }
-  
+
   // Make request and cache it
   const requestPromise = fetch(url, options)
     .then(async (response) => {
@@ -49,7 +55,7 @@ async function cachedFetch(url, options = {}, cacheKey = null, ttl = CACHE_TTL) 
       pendingRequests.delete(key);
       throw error;
     });
-  
+
   pendingRequests.set(key, requestPromise);
   return requestPromise;
 }
@@ -78,7 +84,7 @@ let rafScheduled = false;
  */
 function batchDOMUpdate(callback) {
   domUpdateQueue.push(callback);
-  
+
   if (!rafScheduled) {
     rafScheduled = true;
     requestAnimationFrame(() => {
@@ -86,7 +92,7 @@ function batchDOMUpdate(callback) {
       const queue = domUpdateQueue.slice();
       domUpdateQueue = [];
       rafScheduled = false;
-      
+
       queue.forEach(fn => {
         try {
           fn();
@@ -127,15 +133,15 @@ const STORAGE_DEBOUNCE_MS = 100;
  */
 function debouncedStorageWrite(key, value) {
   storageQueue.set(key, value);
-  
+
   if (storageTimeout) {
     clearTimeout(storageTimeout);
   }
-  
+
   storageTimeout = setTimeout(() => {
     const updates = Object.fromEntries(storageQueue);
     storageQueue.clear();
-    
+
     chrome.storage.local.set(updates, () => {
       console.log(`[Performance] Batched ${Object.keys(updates).length} storage writes`);
     });
@@ -167,7 +173,7 @@ function managedSetInterval(callback, delay) {
       console.error('[Performance] Timer callback error:', e);
     }
   }, delay);
-  
+
   activeTimers.add(id);
   return id;
 }
@@ -184,7 +190,7 @@ function managedSetTimeout(callback, delay) {
       console.error('[Performance] Timer callback error:', e);
     }
   }, delay);
-  
+
   activeTimers.add(id);
   return id;
 }
@@ -221,7 +227,7 @@ function idleCallback(callback, timeout = 5000) {
 // ============================================
 function throttle(func, limit) {
   let inThrottle;
-  return function(...args) {
+  return function (...args) {
     if (!inThrottle) {
       func.apply(this, args);
       inThrottle = true;
@@ -232,7 +238,7 @@ function throttle(func, limit) {
 
 function debounce(func, wait) {
   let timeout;
-  return function(...args) {
+  return function (...args) {
     clearTimeout(timeout);
     timeout = setTimeout(() => func.apply(this, args), wait);
   };
@@ -247,14 +253,14 @@ function debounce(func, wait) {
 function cleanupCache(maxAge = 60000) {
   const now = Date.now();
   let cleaned = 0;
-  
+
   for (const [key, value] of requestCache.entries()) {
     if (now - value.timestamp > maxAge) {
       requestCache.delete(key);
       cleaned++;
     }
   }
-  
+
   if (cleaned > 0) {
     console.log(`[Performance] Cleaned up ${cleaned} old cache entries`);
   }

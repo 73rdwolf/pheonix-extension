@@ -962,8 +962,10 @@ export async function syncDriveFiles(token) {
         const q = `'${folderId}' in parents and trashed = false`;
         console.log('[Drive] Fetching files from folder:', folderId);
         // Increase pageSize to 100 to show more files, and add nextPageToken support
+        // MEMORY OPTIMIZATION: Disable caching for large sync operations to prevent memory bloat
         const res = await window.googleApiFetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=nextPageToken,files(id,name,mimeType,webViewLink,createdTime,permissions)&orderBy=createdTime desc&pageSize=100`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
+            skipCache: true
         });
 
         console.log('[Drive] API response status:', res.status);
@@ -976,16 +978,21 @@ export async function syncDriveFiles(token) {
 
             // Handle pagination - fetch all pages if there are more files
             let nextPageToken = data.nextPageToken;
-            while (nextPageToken) {
+            let pageCount = 1;
+            const MAX_PAGES = 5; // MEMORY OPTIMIZATION: Limit to 500 files max
+
+            while (nextPageToken && pageCount < MAX_PAGES) {
                 console.log('[Drive] Fetching next page of files...');
                 const nextPageRes = await window.googleApiFetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=nextPageToken,files(id,name,mimeType,webViewLink,createdTime,permissions)&orderBy=createdTime desc&pageSize=100&pageToken=${encodeURIComponent(nextPageToken)}`, {
-                    headers: { Authorization: `Bearer ${token}` }
+                    headers: { Authorization: `Bearer ${token}` },
+                    skipCache: true
                 });
 
                 if (nextPageRes.ok) {
                     const nextPageData = await nextPageRes.json();
                     allFiles = allFiles.concat(nextPageData.files || []);
                     nextPageToken = nextPageData.nextPageToken;
+                    pageCount++;
                     console.log('[Drive] Found', nextPageData.files?.length || 0, 'more files. Total:', allFiles.length);
                 } else {
                     console.warn('[Drive] Failed to fetch next page:', nextPageRes.status);
@@ -1022,7 +1029,14 @@ export async function syncDriveFiles(token) {
 
             localStorage.setItem('drive_files_cache', JSON.stringify(filesWithPermissions));
             console.log('[Drive] Rendering', filesWithPermissions.length, 'files with permissions');
-            renderDriveFiles(filesWithPermissions, token);
+
+            // MEMORY OPTIMIZATION: Slice to max 100 for rendering to keep DOM light
+            // Check if we have more files than we render
+            const MAX_RENDER = 100;
+            const filesToRender = filesWithPermissions.slice(0, MAX_RENDER);
+            const hasMore = filesWithPermissions.length > MAX_RENDER;
+
+            renderDriveFiles(filesToRender, token, hasMore);
         } else {
             const errorText = await res.text();
             console.error('[Drive] API error:', res.status, errorText);
@@ -1042,7 +1056,7 @@ export async function syncDriveFiles(token) {
     }
 }
 
-function renderDriveFiles(files, token = null) {
+function renderDriveFiles(files, token = null, hasMore = false) {
     // Re-fetch elements in case they weren't initialized
     let listEl = elements.listEl || document.getElementById('drive-history-list');
     let emptyEl = elements.emptyEl || document.getElementById('drive-empty-state');
@@ -1106,14 +1120,35 @@ function renderDriveFiles(files, token = null) {
     `;
     }).join('');
 
+    // Add "View All" link if truncated
+    let finalHtml = htmlContent;
+    if (hasMore) {
+        finalHtml += `
+            <div class="drive-view-all" style="padding: 10px; text-align: center; margin-top: 10px;">
+                <button id="drive-view-all-btn" class="ob-btn ob-btn-ghost ob-btn-sm" style="opacity: 0.8; font-size: 0.9em;">
+                    View all files in Drive...
+                </button>
+            </div>
+        `;
+    }
+
     window.PerformanceUtils.batchDOMUpdate(() => {
         if (emptyEl) emptyEl.style.display = 'none';
 
         // Set innerHTML and verify it was set
-        listEl.innerHTML = htmlContent;
+        listEl.innerHTML = finalHtml;
         console.log('[Drive] HTML content set (batched). List element now has', listEl.children.length, 'children');
 
         // Attach listeners
+        if (hasMore) {
+            const viewAllBtn = document.getElementById('drive-view-all-btn');
+            if (viewAllBtn) {
+                viewAllBtn.onclick = () => {
+                    const driveUrl = "https://drive.google.com/drive/my-drive";
+                    chrome.tabs.create({ url: driveUrl });
+                };
+            }
+        }
         listEl.querySelectorAll('.copy-link-btn').forEach(btn => {
             btn.onclick = (e) => {
                 e.stopPropagation();
