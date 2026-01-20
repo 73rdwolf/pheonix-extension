@@ -1,0 +1,433 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUDARINA STUDIO EXACT DESIGN SYSTEM
+   Extracted directly from https://budarina.studio
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ─── CORE PALETTE (Exact Budarina) ─── */
+  --bg-core: #F2F2F2;
+  --bg-card: #FFFFFF;
+  --bg-input: #F3F3F3;
+  --bg-elevated: #FFFFFF;
+
+  /* ─── TYPOGRAPHY (Exact Budarina) ─── */
+  --text-main: #161616;
+  --text-secondary: #666666;
+  --text-muted: #999999;
+
+  /* ─── BRANDING (Solid Black CTA) ─── */
+  --accent-color: #000000;
+  --accent-rgb: 0, 0, 0;
+  --accent-hover: #1a1a1a;
+
+  /* ─── BLUE VIGNETTE GLOW (Budarina Signature) ─── */
+  --glow-color: rgba(0, 102, 255, 0.2);
+  --cyan-glow: rgba(0, 102, 255, 0.15);
+  --blue-glow: rgba(0, 102, 255, 0.12);
+
+  /* ─── FUNCTIONAL COLORS ─── */
+  --color-success: #22C55E;
+  --color-success-bg: rgba(34, 197, 94, 0.1);
+  --color-danger: #EF4444;
+  --color-danger-bg: rgba(239, 68, 68, 0.1);
+  --color-warning: #F59E0B;
+
+  /* ─── BORDERS & SHADOWS (Budarina Multi-Layer) ─── */
+  --glass-bg: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: rgba(0, 0, 0, 0.18) 0px 12px 50px -2.5px;
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.03);
+
+  /* ─── BORDER RADIUS (Budarina 32-40px) ─── */
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-pill: 100px;
+
+  /* ─── TYPOGRAPHY (Inter Display) ─── */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Inter', sans-serif;
+
+  color-scheme: light;
+}
+
+/* ─── DARK THEME (Alternate) ─── */
+body.dark-theme {
+  --bg-core: #0A0A0B;
+  --bg-card: #141416;
+  --bg-input: #1C1C1F;
+  --bg-elevated: #1C1C1F;
+  --text-main: #FAFAFA;
+  --text-secondary: #A1A1AA;
+  --text-muted: #71717A;
+  --accent-color: #FFFFFF;
+  --accent-rgb: 255, 255, 255;
+  --glass-bg: rgba(20, 20, 22, 0.95);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  color-scheme: dark;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUDARINA CARD STYLE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.budarina-card {
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg, 24px);
+  box-shadow: var(--shadow-card);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.budarina-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUDARINA PILL BADGES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.pill-badge.accent {
+  background: var(--accent-color);
+  color: var(--bg-card);
+  border-color: transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUDARINA BUTTONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: var(--accent-color);
+  color: var(--bg-card);
+  border: none;
+  border-radius: 12px;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: transparent;
+  color: var(--text-main);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-input);
+  border-color: var(--border-subtle);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUDARINA TYPOGRAPHY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.display-xl {
+  font-size: clamp(3rem, 10vw, 8rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+  color: var(--text-main);
+}
+
+.display-lg {
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--text-main);
+}
+
+.heading-lg {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-main);
+}
+
+.heading-md {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.heading-sm {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.body-lg {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.body-sm {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUDARINA ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCROLLBAR (Minimal)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+body.dark-theme ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FORM INPUTS (Budarina Style)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.input-field {
+  width: 100%;
+  padding: 14px 18px;
+  background: var(--bg-input);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  color: var(--text-main);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.input-field:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+}
+
+.input-field::placeholder {
+  color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ADVANCED MICRO-INTERACTIONS (Research Based)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 1. TEXT SLIDE-UP HOVER (Link Hover) */
+.hover-text-slide {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  position: relative;
+  line-height: 1.2;
+}
+
+.hover-text-slide span {
+  display: block;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-text-slide::after {
+  content: attr(data-hover);
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: skewY(10deg);
+  transform-origin: left top;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--accent-color);
+}
+
+.hover-text-slide:hover span {
+  transform: translateY(-120%) skewY(-10deg);
+}
+
+.hover-text-slide:hover::after {
+  transform: translateY(-100%) skewY(0deg);
+}
+
+/* 2. MAGNETIC BUTTON GLOW (Simulated) */
+.btn-magnetic {
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.btn-magnetic::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.2) 0%, transparent 60%);
+  transform: scale(0);
+  opacity: 0;
+  transition: transform 0.6s ease, opacity 0.4s ease;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.btn-magnetic:hover::before {
+  transform: scale(2);
+  opacity: 1;
+}
+
+/* 3. HERO + ROTATION */
+.rotate-on-hover:hover {
+  transform: rotate(90deg);
+}
+
+/* 4. INFINITE MARQUEE ANIMATION */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  white-space: nowrap;
+  animation: marquee 30s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* 5. PREMIUM SHIMMER (Skeleton/Loading) */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-bg {
+  background: linear-gradient(90deg,
+      var(--bg-input) 25%,
+      rgba(255, 255, 255, 0.5) 50%,
+      var(--bg-input) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+body.dark-theme .shimmer-bg {
+  background: linear-gradient(90deg,
+      var(--bg-input) 25%,
+      rgba(255, 255, 255, 0.05) 50%,
+      var(--bg-input) 75%);
+}

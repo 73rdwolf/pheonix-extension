@@ -1,0 +1,832 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    width: 346px;
+    height: 416px;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+:root {
+    /* ═══════════════════════════════════════════════════════════════════════════
+       BUDARINA STUDIO EXACT DESIGN SYSTEM - Popup Dark Theme
+       Extracted directly from https://budarina.studio
+       ═══════════════════════════════════════════════════════════════════════════ */
+
+    /* ─── CORE PALETTE (Exact Budarina Dark) ─── */
+    --bg-core: #0A0A0B;
+    --bg-core-rgb: 10, 10, 11;
+    --bg-card: #141416;
+    --bg-input: #1C1C1F;
+    --bg-elevated: #1C1C1F;
+    --bg-surface: #141416;
+    --bg-modal: #141416;
+
+    /* ─── TYPOGRAPHY (Exact Budarina) ─── */
+    --text-main: #FAFAFA;
+    --text-secondary: #A1A1AA;
+    --text-muted: #71717A;
+
+    /* ─── BRANDING (Solid White CTA - Dark Theme) ─── */
+    --accent-color: #FFFFFF;
+    --accent-rgb: 255, 255, 255;
+    --accent-hover: #FAFAFA;
+    
+    /* ─── PRIMARY BUTTON COLORS (Theme-specific, not overridden) ─── */
+    --button-primary-bg: #FFFFFF;
+    --button-primary-color: #0A0A0B;
+    --button-primary-hover: #FAFAFA;
+
+    /* ─── BUDARINA COLOR HIERARCHY (Dark Theme) ─── */
+    --color-primary: #FFFFFF;
+    --color-primary-rgb: 255, 255, 255;
+    --color-secondary: #FFFFFF;
+    --color-secondary-rgb: 255, 255, 255;
+
+    /* ─── BLUE VIGNETTE GLOW (Budarina Signature) ─── */
+    --glow-color: rgba(0, 102, 255, 0.2);
+    --cyan-glow: rgba(0, 102, 255, 0.15);
+    --blue-glow: rgba(0, 102, 255, 0.12);
+
+    /* ─── FUNCTIONAL COLORS ─── */
+    --color-success: #22C55E;
+    --color-success-bg: rgba(34, 197, 94, 0.1);
+    --color-danger: #EF4444;
+    --color-danger-bg: rgba(239, 68, 68, 0.1);
+    --color-warning: #F59E0B;
+
+    /* ─── BORDERS & SHADOWS (Budarina Multi-Layer) ─── */
+    --glass-bg: rgba(20, 20, 22, 0.95);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+    --shadow-lg: rgba(0, 0, 0, 0.18) 0px 12px 50px -2.5px;
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+
+    /* ─── BORDER RADIUS (Budarina 32-40px) ─── */
+    --radius-sm: 8px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+    --radius-xl: 32px;
+    --radius-pill: 100px;
+
+    /* ─── TYPOGRAPHY (Inter Display) ─── */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-display: 'Inter', sans-serif;
+    --font-hud: 'Oswald', sans-serif;
+    --font-ui: 'Inter', sans-serif;
+
+    /* ─── CARD DESIGN (Budarina) ─── */
+    --card-bg: #141416;
+    --card-hover-bg: #1C1C1F;
+    --card-hover-border: rgba(255, 255, 255, 0.15);
+
+    /* ─── BUTTONS ─── */
+    --button-bg: #1C1C1F;
+    --button-hover-bg: #27272A;
+
+    color-scheme: dark;
+}
+
+.light-theme {
+    /* ═══════════════════════════════════════════════════════════════════════════
+       BUDARINA STUDIO EXACT DESIGN SYSTEM - Popup Light Theme
+       Extracted directly from https://budarina.studio
+       ═══════════════════════════════════════════════════════════════════════════ */
+
+    /* ─── CORE PALETTE (Exact Budarina Light) ─── */
+    --bg-core: #F2F2F2;
+    --bg-core-rgb: 242, 242, 242;
+    --bg-card: #FFFFFF;
+    --bg-input: #F3F3F3;
+    --bg-elevated: #FFFFFF;
+    --bg-surface: #FFFFFF;
+    --bg-modal: #FFFFFF;
+
+    /* ─── TYPOGRAPHY (Exact Budarina) ─── */
+    --text-main: #161616;
+    --text-secondary: #666666;
+    --text-muted: #999999;
+
+    /* ─── BRANDING (Solid Black CTA - Light Theme) ─── */
+    --accent-color: #000000;
+    --accent-rgb: 0, 0, 0;
+    --accent-hover: #1a1a1a;
+    
+    /* ─── PRIMARY BUTTON COLORS (Theme-specific, not overridden) ─── */
+    --button-primary-bg: #000000;
+    --button-primary-color: #FFFFFF;
+    --button-primary-hover: #1a1a1a;
+
+    /* ─── BUDARINA COLOR HIERARCHY (Light Theme) ─── */
+    --color-primary: #000000;
+    --color-primary-rgb: 0, 0, 0;
+    --color-secondary: #1a1a1a;
+    --color-secondary-rgb: 26, 26, 26;
+
+    /* ─── BLUE VIGNETTE GLOW (Budarina Signature) ─── */
+    --glow-color: rgba(0, 102, 255, 0.2);
+    --cyan-glow: rgba(0, 102, 255, 0.15);
+    --blue-glow: rgba(0, 102, 255, 0.12);
+
+    /* ─── FUNCTIONAL COLORS ─── */
+    --color-success: #22C55E;
+    --color-success-bg: rgba(34, 197, 94, 0.1);
+    --color-danger: #EF4444;
+    --color-danger-bg: rgba(239, 68, 68, 0.1);
+    --color-warning: #F59E0B;
+
+    /* ─── BORDERS & SHADOWS (Budarina Multi-Layer) ─── */
+    --glass-bg: rgba(255, 255, 255, 0.95);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --border-subtle: rgba(0, 0, 0, 0.08);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+    --shadow-lg: rgba(0, 0, 0, 0.18) 0px 12px 50px -2.5px;
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.03);
+
+    /* ─── CARD DESIGN (Budarina Light) ─── */
+    --card-bg: #FFFFFF;
+    --card-hover-bg: #F3F3F3;
+    --card-hover-border: rgba(0, 0, 0, 0.1);
+
+    /* ─── BUTTONS ─── */
+    --button-bg: #F3F3F3;
+    --button-hover-bg: #E5E5E5;
+
+    color-scheme: light;
+}
+
+body {
+    font-family: var(--font-ui);
+    color: var(--text-main);
+    background-color: var(--bg-core);
+    margin: 0;
+    padding: 0;
+    width: 346px;
+    height: 416px;
+    min-width: 346px;
+    min-height: 416px;
+    overflow: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+}
+
+.skeleton-line {
+    background: var(--text-main);
+    opacity: 0.08;
+    border-radius: 4px;
+    animation: skeleton-shimmer 1.5s infinite ease-in-out;
+}
+
+.light-theme .skeleton-line {
+    opacity: 0.15;
+}
+
+@keyframes skeleton-shimmer {
+    0% {
+        opacity: 0.05;
+    }
+
+    50% {
+        opacity: 0.15;
+    }
+
+    100% {
+        opacity: 0.05;
+    }
+}
+
+.popup-container {
+    padding-top: 20px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    box-sizing: border-box;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.module-header {
+    font-family: var(--font-hud);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-transform: uppercase;
+    padding: 0 20px;
+    margin-bottom: 0;
+    flex-shrink: 0;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#refresh-gmail-btn {
+    background: var(--button-bg);
+    border: none;
+    color: var(--text-muted);
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#refresh-gmail-btn:hover {
+    background: var(--button-hover-bg);
+    color: var(--accent-color);
+}
+
+#refresh-gmail-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.badge {
+    background: var(--accent-color);
+    color: var(--bg-card);
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.3);
+    min-width: 20px;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.module-content {
+    flex: 1;
+    overflow-y: auto;
+    font-size: 0.9rem;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    min-height: 200px;
+    padding: 16px 20px 20px 20px;
+}
+
+.module-content::-webkit-scrollbar {
+    display: none;
+}
+
+/* --- EMAIL CARD STYLES (Budarina) --- */
+.email-item {
+    display: flex;
+    flex-direction: column;
+    padding: 14px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    margin-bottom: 10px;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+}
+
+.email-item:hover {
+    background: var(--card-hover-bg);
+    border-color: var(--card-hover-border);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.email-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+}
+
+.email-from {
+    font-size: 0.85rem;
+    color: var(--accent-color);
+    font-weight: 600;
+    letter-spacing: -0.1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 70%;
+}
+
+.email-time {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.email-subject {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+
+.email-snippet {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* --- MODALS & OVERLAYS (Budarina Style) --- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 1000;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(100%);
+}
+
+.email-modal-content {
+    width: 100%;
+    height: 100%;
+    background: var(--bg-modal);
+    border-top: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow-lg);
+}
+
+.modal-header-clean {
+    padding: 16px 16px 12px 16px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--glass-border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: all 0.3s ease;
+}
+
+.modal-header-clean.compressed {
+    padding: 10px 16px;
+}
+
+.modal-header-clean.compressed .email-sender-info {
+    max-height: 0;
+    opacity: 0;
+    margin: 0;
+    pointer-events: none;
+}
+
+.close-modal-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    background: var(--button-bg);
+    border: none;
+    color: var(--text-main);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1rem;
+    z-index: 11;
+}
+
+.close-modal-btn:hover {
+    background: var(--button-hover-bg);
+}
+
+#email-view-subject {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-main);
+    line-height: 1.3;
+    padding-right: 32px;
+    letter-spacing: -0.01em;
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.email-sender-info {
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.email-view-from-pill {
+    color: var(--accent-color);
+    font-weight: 700;
+}
+
+.dot-separator {
+    opacity: 0.3;
+}
+
+.email-body-content {
+    flex: 1;
+    padding: 16px 16px 80px 16px;
+    overflow-y: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text-main);
+    scrollbar-width: none;
+}
+
+.email-body-content::-webkit-scrollbar {
+    display: none;
+}
+
+.email-body-content img {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 8px;
+    margin: 12px 0;
+    display: block;
+}
+
+.email-body-content table {
+    width: 100% !important;
+    display: block;
+    overflow-x: auto;
+    border-collapse: collapse;
+}
+
+.email-body-content pre {
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-family: var(--font-sans);
+    margin: 12px 0;
+    background: var(--bg-input);
+    padding: 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+}
+
+/* --- FLOATING ACTIONS --- */
+.email-actions-toolbar {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    padding: 8px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    z-index: 20;
+    box-shadow: var(--shadow-lg);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.email-actions-toolbar.scrolling-down {
+    transform: translateY(100px);
+    opacity: 0;
+}
+
+.toolbar-btn {
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border: none;
+    background: var(--button-bg);
+    color: var(--text-main);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.toolbar-btn:hover {
+    background: var(--button-hover-bg);
+}
+
+.toolbar-btn.primary {
+    background: var(--button-primary-bg);
+    color: var(--button-primary-color);
+    flex: 2;
+}
+
+.toolbar-btn.primary:hover {
+    background: var(--button-primary-hover);
+    transform: translateY(-1px);
+}
+
+.toolbar-btn.danger {
+    color: var(--color-danger);
+    aspect-ratio: 1;
+    padding: 0;
+    width: 36px;
+    background: var(--color-danger-bg);
+}
+
+.toolbar-btn.danger:hover {
+    background: var(--color-danger-bg);
+}
+
+/* --- REPLY AREA --- */
+.email-reply-area {
+    height: 240px;
+    padding: 16px;
+    background: var(--bg-modal);
+    border-top: 1px solid var(--glass-border);
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: transform 0.3s ease;
+}
+
+.email-reply-area.hidden {
+    display: none !important;
+}
+
+body.reply-mode .email-actions-toolbar {
+    display: none !important;
+}
+
+#email-reply-text {
+    flex: 1;
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    color: var(--text-main);
+    padding: 14px 18px;
+    resize: none;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    outline: none;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+#email-reply-text:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+}
+
+#email-reply-text::placeholder {
+    color: var(--text-muted);
+}
+
+.reply-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.primary-btn {
+    padding: 14px 28px;
+    background: var(--button-primary-bg);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--button-primary-color);
+    font-size: 0.9rem;
+    font-family: var(--font-sans);
+    flex: 2;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-sm);
+}
+
+.primary-btn:hover {
+    background: var(--button-primary-hover);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: var(--shadow-md);
+}
+
+.secondary-btn {
+    padding: 14px 20px;
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--text-main);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+    font-family: var(--font-sans);
+    flex: 1;
+    transition: all 0.2s ease;
+}
+
+.secondary-btn:hover {
+    background: var(--bg-input);
+    border-color: var(--border-subtle);
+}
+
+.hidden {
+    display: none !important;
+}
+
+.rotate-180 {
+    transform: rotate(180deg);
+    transition: transform 0.3s ease;
+}
+
+/* ========================================
+   LIGHT THEME - Complete Overrides
+   ======================================== */
+
+/* Email Body Content - Ensure proper theme styling */
+.email-body-content {
+    background: var(--bg-modal);
+    color: var(--text-main);
+}
+
+/* Override inline styles from external email HTML for dark theme */
+.email-body-content * {
+    color: var(--text-main) !important;
+}
+
+.email-body-content a {
+    color: var(--accent-color) !important;
+}
+
+.email-body-content pre {
+    background: var(--button-bg);
+    border-color: var(--glass-border);
+    color: var(--text-main);
+}
+
+/* Light theme specific overrides */
+.light-theme .email-body-content {
+    background: var(--bg-modal);
+    color: var(--text-main);
+}
+
+/* Override inline styles from external email HTML for light theme */
+.light-theme .email-body-content * {
+    color: var(--text-main) !important;
+}
+
+.light-theme .email-body-content a {
+    color: var(--accent-color) !important;
+}
+
+.light-theme .email-body-content pre {
+    background: var(--bg-input);
+    border-color: var(--glass-border);
+    color: var(--text-main);
+}
+
+/* Modal overlay and content */
+.light-theme .modal-overlay {
+    background: rgba(255, 255, 255, 0.6);
+}
+
+.light-theme .email-modal-content {
+    background: var(--bg-modal);
+    border-top-color: var(--glass-border);
+    box-shadow: var(--shadow-lg);
+}
+
+.light-theme .modal-header-clean {
+    background: var(--bg-surface);
+    border-bottom-color: var(--glass-border);
+}
+
+.light-theme #email-view-subject {
+    color: var(--text-main);
+}
+
+.light-theme .email-view-from-pill {
+    color: var(--accent-color);
+}
+
+.light-theme .email-view-time-text,
+.light-theme .dot-separator {
+    color: var(--text-muted);
+}
+
+/* Close button */
+.light-theme .close-modal-btn {
+    background: var(--button-bg);
+    color: var(--text-main);
+}
+
+.light-theme .close-modal-btn:hover {
+    background: var(--button-hover-bg);
+}
+
+/* Floating Actions Toolbar */
+.light-theme .email-actions-toolbar {
+    background: var(--glass-bg);
+    border-color: var(--glass-border);
+    box-shadow: var(--shadow-lg);
+}
+
+.light-theme .toolbar-btn {
+    background: var(--button-bg);
+    color: var(--text-main);
+}
+
+.light-theme .toolbar-btn:hover {
+    background: var(--button-hover-bg);
+}
+
+.light-theme .toolbar-btn.primary {
+    background: var(--button-primary-bg);
+    color: var(--button-primary-color);
+}
+
+.light-theme .toolbar-btn.danger {
+    background: var(--color-danger-bg);
+    color: var(--color-danger);
+}
+
+/* Reply Area */
+.light-theme .email-reply-area {
+    background: var(--bg-modal);
+    border-top-color: var(--glass-border);
+}
+
+.light-theme #email-reply-text {
+    background: var(--bg-input);
+    border-color: var(--glass-border);
+    color: var(--text-main);
+}
+
+.light-theme #email-reply-text:focus {
+    background: var(--bg-elevated);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+}
+
+.light-theme #email-reply-text::placeholder {
+    color: var(--text-muted);
+}
+
+.light-theme .primary-btn {
+    background: var(--button-primary-bg);
+    color: var(--button-primary-color);
+}
+
+.light-theme .secondary-btn {
+    background: var(--button-bg);
+    color: var(--text-main);
+}
+
+.light-theme .secondary-btn:hover {
+    background: var(--button-hover-bg);
+}

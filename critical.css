@@ -1,0 +1,43 @@
+/* CRITICAL: This file loads FIRST to prevent any flash */
+/* This must be the absolute first CSS to load */
+/* Default to LIGHT GRAY to prevent white flash - will be overridden by script if dark theme */
+
+html {
+  /* Default to light gray to prevent white flash in light theme */
+  /* Dark theme will override this immediately via script */
+  background-color: #F2F2F2 !important;
+  background: #F2F2F2 !important;
+  /* Ensure it covers everything */
+  min-height: 100% !important;
+  height: 100% !important;
+}
+
+/* Dark theme override - applied immediately by script */
+html:not(.light-theme) {
+  background-color: #0A0A0B !important;
+  background: #0A0A0B !important;
+}
+
+html.light-theme {
+  background-color: #F2F2F2 !important;
+  background: #F2F2F2 !important;
+}
+
+body {
+  background-color: inherit !important;
+  background: inherit !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 100vh !important;
+  height: 100vh !important;
+}
+
+/* Ensure no element shows white background */
+* {
+  box-sizing: border-box;
+}
+
+/* Prevent any white flash from default browser styles */
+html, body {
+  -webkit-tap-highlight-color: transparent;
+}

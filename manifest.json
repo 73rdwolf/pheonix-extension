@@ -1,0 +1,67 @@
+{
+  "manifest_version": 3,
+  "name": "Essentials by Atlasssians",
+  "version": "2.2",
+  "description": "Premium dashboard with Gemini AI & Workspace integration.",
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "permissions": [
+    "identity",
+    "storage",
+    "unlimitedStorage",
+    "tabs",
+    "alarms",
+    "notifications",
+    "offscreen",
+    "geolocation",
+    "idle",
+    "history",
+    "webNavigation"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "https://*.google.com/*",
+    "https://www.google.com/*",
+    "https://*.googleusercontent.com/*",
+    "https://*.googleapis.com/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://mail.google.com/*",
+    "https://wttr.in/*",
+    "https://api.open-meteo.com/*",
+    "https://*.chromiumapp.org/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://mail.google.com/*",
+        "file:///*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "oauth2": {
+    "client_id": "149193288904-fkjovpramlmte3958822t0cgmlgqr7lh.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/gmail.modify",
+      "https://www.googleapis.com/auth/gmail.send",
+      "https://www.googleapis.com/auth/calendar",
+      "https://www.googleapis.com/auth/tasks",
+      "https://www.googleapis.com/auth/drive.file",
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile"
+    ]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com"
+  }
+}
