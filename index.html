@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="en" style="background-color: #F2F2F2; background: #F2F2F2;">
+
+<head>
+  <meta charset="UTF-8">
+  <!-- CRITICAL: Inject CSS BEFORE anything else to prevent flash -->
+  <script>
+    // This MUST run before any rendering - inject CSS directly into document
+    // Use immediate execution, no dependencies, works even if localStorage fails
+    (function () {
+      'use strict';
+      // CRITICAL: Default to LIGHT GRAY to prevent white flash
+      // HTML tag already has #F2F2F2, so we maintain that unless dark theme
+      var bgColor = '#F2F2F2'; // Default light - prevents white flash
+      var isLight = true; // Default to light to prevent white flash
+
+      // Try to read theme, but don't block if it fails
+      try {
+        var pref = localStorage.getItem('theme_preference');
+        var mode = localStorage.getItem('theme_mode');
+        var theme = pref || mode || 'auto';
+
+        if (theme === 'light') {
+          isLight = true;
+          bgColor = '#F2F2F2';
+        } else if (theme === 'dark') {
+          isLight = false;
+          bgColor = '#0A0A0B';
+        } else if (theme === 'auto') {
+          try {
+            isLight = !window.matchMedia('(prefers-color-scheme: dark)').matches;
+            bgColor = isLight ? '#F2F2F2' : '#0A0A0B';
+          } catch (e) {
+            // Fallback to light to prevent white flash
+            isLight = true;
+            bgColor = '#F2F2F2';
+          }
+        }
+
+        var solidColor = localStorage.getItem('solid_bg_color');
+        if (solidColor && solidColor.trim()) {
+          bgColor = solidColor;
+          // If custom color is set, try to determine if it's light or dark
+          // Simple heuristic: if it's closer to white, it's light
+          try {
+            var rgb = solidColor.match(/\d+/g);
+            if (rgb && rgb.length >= 3) {
+              var r = parseInt(rgb[0]);
+              var g = parseInt(rgb[1]);
+              var b = parseInt(rgb[2]);
+              // If average is > 128, it's likely a light color
+              isLight = ((r + g + b) / 3) > 128;
+            }
+          } catch (e) { }
+        }
+      } catch (e) {
+        // If localStorage fails, default to light to prevent white flash
+        isLight = true;
+        bgColor = '#F2F2F2';
+      }
+
+      // CRITICAL: Set background IMMEDIATELY - this is the fastest method
+      var html = document.documentElement;
+
+      // Set background directly on HTML element FIRST (fastest)
+      html.style.setProperty('background-color', bgColor, 'important');
+      html.style.setProperty('background', bgColor, 'important');
+
+      // Apply theme class immediately
+      if (isLight) {
+        html.classList.add('light-theme');
+      } else {
+        html.classList.remove('light-theme');
+      }
+
+      // CRITICAL: Inject CSS into head IMMEDIATELY as backup
+      // This works even before the head tag is fully parsed
+      var style = document.createElement('style');
+      style.id = 'critical-bg-inline';
+      style.setAttribute('data-bg', bgColor);
+      style.textContent =
+        'html{background-color:' + bgColor + '!important;background:' + bgColor + '!important;}' +
+        'html:not(.light-theme){background-color:#0A0A0B!important;background:#0A0A0B!important;}' +
+        'html.light-theme{background-color:#F2F2F2!important;background:#F2F2F2!important;}' +
+        'body{background-color:inherit!important;background:inherit!important;margin:0!important;padding:0!important;}';
+
+      // Insert at the very beginning of head
+      var head = document.head || document.getElementsByTagName('head')[0] || document.documentElement;
+      head.insertBefore(style, head.firstChild);
+
+      // Update meta theme-color if it exists
+      try {
+        var metaTheme = document.getElementById('theme-color-meta');
+        if (metaTheme) {
+          metaTheme.content = bgColor;
+        }
+      } catch (e) { }
+
+      // Watch for body and set background immediately when it appears
+      var setBodyBg = function () {
+        try {
+          if (document.body) {
+            document.body.style.setProperty('background-color', bgColor, 'important');
+            document.body.style.setProperty('background', bgColor, 'important');
+            return true;
+          }
+        } catch (e) { }
+        return false;
+      };
+
+      // Try immediately
+      if (!setBodyBg()) {
+        // Use MutationObserver for immediate detection
+        try {
+          var observer = new MutationObserver(function () {
+            if (setBodyBg()) {
+              observer.disconnect();
+            }
+          });
+          observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: false
+          });
+          // Also try on next tick
+          setTimeout(setBodyBg, 0);
+        } catch (e) {
+          // Fallback: try periodically
+          var interval = setInterval(function () {
+            if (setBodyBg()) {
+              clearInterval(interval);
+            }
+          }, 1);
+          setTimeout(function () { clearInterval(interval); }, 100);
+        }
+      }
+    })();
+  </script>
+  <!-- CRITICAL: Meta theme-color must be FIRST to prevent browser chrome flash -->
+  <!-- Default to light gray to prevent white flash, will be updated by script -->
+  <meta name="theme-color" content="#F2F2F2" id="theme-color-meta">
+  <!-- CRITICAL: Set background color IMMEDIATELY to prevent flash -->
+  <script>
+    // CRITICAL: This script MUST run synchronously before any paint
+    // Use IIFE with immediate execution, no async/await
+    (function () {
+      'use strict';
+      try {
+        // Read theme from localStorage synchronously (fast)
+        const pref = localStorage.getItem('theme_preference');
+        const mode = localStorage.getItem('theme_mode');
+        const theme = pref || mode || 'auto';
+
+        // Determine if light theme
+        let isLight = false;
+        if (theme === 'light') {
+          isLight = true;
+        } else if (theme === 'auto') {
+          try {
+            isLight = !window.matchMedia('(prefers-color-scheme: dark)').matches;
+          } catch (e) {
+            isLight = false; // Default to dark if media query fails
+          }
+        }
+
+        // Get background color
+        const solidColor = localStorage.getItem('solid_bg_color');
+        const finalBg = solidColor || (isLight ? '#F2F2F2' : '#0A0A0B');
+
+        // Apply to html IMMEDIATELY (before any rendering)
+        const html = document.documentElement;
+        // Set both CSS variable and inline style for maximum compatibility
+        html.style.setProperty('--bg-core', finalBg);
+        html.style.setProperty('--bg-core-inline', finalBg);
+        // Use both backgroundColor and background for maximum browser compatibility
+        html.style.backgroundColor = finalBg;
+        html.style.background = finalBg;
+
+        // Update meta theme-color immediately
+        const metaTheme = document.getElementById('theme-color-meta');
+        if (metaTheme) {
+          metaTheme.content = finalBg;
+        }
+
+        // Apply theme class
+        if (isLight) {
+          html.classList.add('light-theme');
+        } else {
+          html.classList.remove('light-theme');
+        }
+
+        // Set body background when it exists (use MutationObserver for immediate detection)
+        const setBodyBg = function () {
+          if (document.body) {
+            document.body.style.setProperty('--bg-core-inline', finalBg);
+            document.body.style.backgroundColor = finalBg;
+            document.body.style.background = finalBg;
+            return true;
+          }
+          return false;
+        };
+
+        // Try immediately
+        if (!setBodyBg()) {
+          // If body doesn't exist yet, watch for it
+          const observer = new MutationObserver(function () {
+            if (setBodyBg()) {
+              observer.disconnect();
+            }
+          });
+          observer.observe(document.documentElement, { childList: true, subtree: true });
+          // Also try on next tick
+          setTimeout(setBodyBg, 0);
+        }
+      } catch (e) {
+        // Fallback: ensure dark background is set even if script fails
+        document.documentElement.style.backgroundColor = '#0A0A0B';
+        document.documentElement.style.background = '#0A0A0B';
+      }
+    })();
+  </script>
+  <style>
+    /* CRITICAL ANTI-FOUC CSS */
+    body {
+      margin: 0;
+      opacity: 0;
+      transition: opacity 0.3s ease-in;
+    }
+
+    body.loaded {
+      opacity: 1;
+    }
+
+    /* Instant load if settings were pre-applied */
+    html.pre-loaded body {
+      opacity: 1 !important;
+      transition: none !important;
+    }
+  </style>
+  <title>Essentials</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;600&family=Oswald:wght@200;300;400;500;700&family=Roboto+Mono:wght@200;300;400&family=JetBrains+Mono:wght@200;300&family=Orbitron:wght@400;500&family=Azeret+Mono:wght@200;300&display=block"
+    rel="stylesheet">
+  <script>
+    (function () {
+      // This script runs after the blocking script above
+      // It ensures meta theme-color and other settings are applied
+      // Background color is already set by the blocking script above
+
+      const doc = document.documentElement;
+      const pref = localStorage.getItem('theme_preference');
+      const mode = localStorage.getItem('theme_mode');
+      const theme = pref || mode || 'auto';
+
+      let isLight = false;
+      if (theme === 'light') isLight = true;
+      else if (theme === 'auto') {
+        isLight = !window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+
+      // Get current background (already set by blocking script, but ensure it's correct)
+      const solidColor = localStorage.getItem('solid_bg_color');
+      const finalBg = solidColor || (isLight ? '#F2F2F2' : '#0A0A0B');
+
+      // Ensure background is still set (in case chrome.storage.local has different value)
+      doc.style.setProperty('--bg-core', finalBg);
+      doc.style.setProperty('--bg-core-inline', finalBg);
+      doc.style.setProperty('background-color', finalBg, 'important');
+      doc.style.setProperty('background', finalBg, 'important');
+
+      // Update critical CSS if it exists
+      var criticalStyle = document.getElementById('critical-bg-inline');
+      if (criticalStyle) {
+        criticalStyle.setAttribute('data-bg', finalBg);
+        criticalStyle.textContent =
+          'html{background-color:' + finalBg + '!important;background:' + finalBg + '!important;}' +
+          'html.light-theme{background-color:' + (isLight ? '#F2F2F2' : '#0A0A0B') + '!important;background:' + (isLight ? '#F2F2F2' : '#0A0A0B') + '!important;}' +
+          'body{background-color:inherit!important;background:inherit!important;margin:0!important;padding:0!important;}';
+      }
+
+      if (document.body) {
+        document.body.style.setProperty('--bg-core-inline', finalBg);
+        document.body.style.setProperty('background-color', finalBg, 'important');
+        document.body.style.setProperty('background', finalBg, 'important');
+      }
+
+      // Dynamic Meta Theme Color to prevent browser chrome flash
+      let metaTheme = document.getElementById('theme-color-meta') || document.querySelector('meta[name="theme-color"]');
+      if (!metaTheme) {
+        metaTheme = document.createElement('meta');
+        metaTheme.id = 'theme-color-meta';
+        metaTheme.name = "theme-color";
+        document.head.appendChild(metaTheme);
+      }
+      metaTheme.content = finalBg;
+
+      // Gradient
+      if (localStorage.getItem('gradient_enabled') === 'true') {
+        const g1 = localStorage.getItem('gradient_color_1');
+        const g2 = localStorage.getItem('gradient_color_2');
+        if (g1) doc.style.setProperty('--gradient-color-1', g1);
+        if (g2) doc.style.setProperty('--gradient-color-2', g2);
+        doc.classList.add('has-gradient');
+      } else {
+        doc.classList.remove('has-gradient');
+      }
+
+      // Font
+      const font = localStorage.getItem('font_hud_preference');
+      if (font) doc.style.setProperty('--font-hud', font);
+
+      // Pre-loaded marker
+      if (pref || mode) doc.classList.add('pre-loaded');
+    })();
+  </script>
+  <link rel="stylesheet" href="critical.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="nexus.css">
+  <link rel="stylesheet" href="onboarding.css">
+
+  <style>
+    /* CRITICAL ANTI-FOUC CSS */
+    body {
+      margin: 0;
+      opacity: 0;
+      transition: opacity 0.3s ease-in;
+    }
+
+    body.loaded {
+      opacity: 1;
+    }
+
+    /* Instant load if settings were pre-applied */
+    html.pre-loaded body {
+      opacity: 1 !important;
+      transition: none !important;
+    }
+  </style>
+</head>
+
+<body>
+
+
+  <div class="gradient-layer" id="gradient-layer"></div>
+  <div class="grid-overlay" id="grid-layer"></div>
+
+  <main class="hud-container">
+
+
+
+    <section class="center-stage">
+      <div id="date-display">LOADING...</div>
+      <div id="clock">00:00</div>
+      <div id="weather-container" style="opacity: 0;">
+        <span id="weather-info">Loading Weather...</span>
+      </div>
+      <script src="weather_init.js"></script>
+
+      <!-- NEXUS CONSOLE -->
+      <div id="nexus-console" class="nexus-console colored-icons">
+        <div id="nexus-tooltip" class="nexus-tooltip"></div>
+        <div class="console-grid-wrapper" id="nexus-grid-wrapper">
+          <div class="console-row" id="nexus-row-0">
+            <!-- Top row injected by JS -->
+          </div>
+          <div class="console-row" id="nexus-row-1">
+            <!-- Bottom row injected by JS -->
+          </div>
+        </div>
+        <div class="quote-section" id="quote-container">
+          <p class="quote-text" id="nexus-quote-text">"You have power over your mind, not outside events."</p>
+          <p class="quote-author" id="nexus-quote-author">MARCUS AURELIUS</p>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="modules-grid">
+
+
+
+      <div class="module-card" id="calendar-module">
+        <div class="module-header">
+          <div class="header-left"><span class="icon">C</span> CALENDAR</div>
+          <span class="badge" id="cal-badge">--</span>
+        </div>
+        <div class="module-content" id="cal-module-body">
+          <div class="calendar-nav">
+            <span id="cal-month-year">MONTH YEAR</span>
+          </div>
+          <div class="calendar-grid-header">
+            <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+          </div>
+          <div class="calendar-grid" id="cal-grid">
+            <!-- Calendar days will be injected here -->
+          </div>
+          <div class="calendar-scroll-indicator">
+            <div class="scroll-chevrons">
+              <svg viewBox="0 0 24 12">
+                <polyline points="4,2 12,10 20,2" />
+              </svg>
+              <svg viewBox="0 0 24 12">
+                <polyline points="4,2 12,10 20,2" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="module-card" id="drive-target-card">
+        <div class="drop-overlay" id="drive-drop-zone">
+          <div class="drop-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </div>
+          <div class="drop-text">DROP FILES TO UPLOAD</div>
+        </div>
+
+        <!-- Header -->
+
+
+        <!-- File List Content -->
+        <div class="module-content" id="drive-list-scroll-area">
+          <div id="drive-history-list"></div>
+          <div class="empty-state" id="drive-empty-state"
+            style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">Ready to upload
+            files...</div>
+        </div>
+
+        <!-- Bottom Quota Section -->
+        <div class="drive-quota-section hidden" id="drive-quota-container">
+          <div class="quota-left">
+            <div class="quota-ring-modern">
+              <svg width="36" height="36" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="14" fill="none" stroke="var(--glass-border)" stroke-width="3"
+                  class="quota-ring-bg"></circle>
+                <circle id="quota-ring-fill" cx="18" cy="18" r="14" fill="none" stroke="var(--accent-color)"
+                  stroke-width="3" stroke-dasharray="88 88" stroke-dashoffset="88" stroke-linecap="round"></circle>
+              </svg>
+            </div>
+            <div class="quota-details">
+              <span class="quota-label-modern">Google Drive</span>
+              <span class="quota-value-modern" id="quota-text">-- / --</span>
+            </div>
+          </div>
+          <div class="quota-actions">
+            <button id="quota-privacy-btn" class="drive-action-btn" title="Toggle Privacy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </button>
+            <button id="quota-folder-btn" class="drive-action-btn" title="Upload Folder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                <line x1="12" y1="11" x2="12" y2="17"></line>
+                <line x1="9" y1="14" x2="15" y2="14"></line>
+              </svg>
+            </button>
+            <button id="quota-upload-btn" class="drive-action-btn" title="Upload File">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </button>
+            <button id="quota-open-btn" class="drive-action-btn" title="Open Drive">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Hidden Inputs -->
+        <input type="file" id="drive-file-input" style="display:none">
+        <input type="file" id="drive-folder-input" style="display:none" webkitdirectory>
+
+        <!-- Overlays -->
+        <div class="success-overlay hidden" id="upload-success-overlay">
+          <div class="success-checkmark"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#66cc8a"
+              stroke-width="3">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg></div>
+          <div class="success-text">UPLOADED</div>
+        </div>
+        <div class="progress-overlay hidden" id="upload-progress-overlay">
+          <div class="progress-ring-container">
+            <div style="position: relative; width: 80px; height: 80px;">
+              <svg class="progress-ring" width="80" height="80">
+                <circle class="progress-ring-bg" cx="40" cy="40" r="34" stroke="rgba(255,255,255,0.1)" stroke-width="4"
+                  fill="none" />
+                <circle class="progress-ring-fill" id="progress-ring-fill" cx="40" cy="40" r="34"
+                  stroke="var(--accent-color)" stroke-width="4" fill="none" />
+              </svg>
+              <div class="progress-center-text">
+                <span class="progress-percent" id="progress-percent">0%</span>
+              </div>
+            </div>
+            <span id="progress-speed">Starting...</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="module-card" id="tasks-module">
+        <div class="module-header">
+          <div class="header-left">TASKS</div>
+          <button id="add-task-btn" class="icon-btn-small">+</button>
+        </div>
+        <div class="module-content">
+          <!-- Smart Add Task Card (Grid Animation Wrapper) -->
+          <div id="add-task-card" class="add-task-card hidden">
+            <div class="add-task-inner">
+              <input type="text" id="smart-task-title" class="smart-task-input" placeholder="What needs to be done?">
+
+              <textarea id="smart-task-notes" class="smart-task-notes" placeholder="Details (optional)..."></textarea>
+              <div class="smart-footer">
+                <span class="smart-hint"></span>
+                <button id="smart-save-btn">ENTER</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="task-list"></div>
+          <div id="completed-tasks-container" style="width: 100%;">
+            <div class="completed-tasks-header" id="toggle-completed">
+              <span>COMPLETED</span>
+              <span id="completed-count">0</span>
+            </div>
+            <div id="completed-task-list" class="completed-tasks-list"></div>
+            <button id="clear-completed-btn" class="clear-completed-btn hidden">CLEAR COMPLETED</button>
+          </div>
+        </div>
+        <div id="task-resize-handle" class="module-resize-handle"></div>
+      </div>
+
+      <!-- Site Tracker Module -->
+      <div class="module-card" id="site-tracker-card">
+        <div class="module-header">
+          <div class="header-left">SESSION FOCUS</div>
+          <button id="reset-stats-btn" class="icon-btn-small" title="Reset Session">↻</button>
+        </div>
+        <div class="module-content">
+          <div id="site-list" class="site-list">
+            <!-- Sites injected here -->
+            <div class="empty-state">Start browsing...</div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <button id="settings-btn" class="cmd-btn icon-btn" title="Settings">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path
+        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+      </path>
+    </svg>
+  </button>
+
+  <!-- Settings Panel Overlay (transparent, for click-outside) -->
+  <div id="settings-overlay" class="settings-panel-overlay"></div>
+
+  <!-- Slide-in Settings Panel (Full Height) -->
+  <div id="settings-panel" class="settings-panel">
+    <!-- Profile Header Section -->
+    <div class="settings-profile-header">
+      <div class="profile-main">
+        <div class="profile-pic-container">
+          <img id="user-profile-pic" src="images/icon128.png" alt="Profile" class="profile-pic">
+        </div>
+        <div class="profile-info">
+          <h3 id="user-display-name">GUEST USER</h3>
+          <p id="user-email">Not connected to Google</p>
+          <button id="header-login-btn" class="header-login-btn">CONNECT GOOGLE</button>
+        </div>
+      </div>
+      <div class="profile-actions">
+        <button id="header-logout-btn" class="header-logout-btn" title="Logout">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </button>
+        <button id="close-settings" class="settings-close-btn" title="Close Panel">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="settings-tab-nav">
+      <button class="settings-tab-btn active" data-tab="appearance">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+        <span>APPEARANCE</span>
+      </button>
+
+      <button class="settings-tab-btn" data-tab="account">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        <span>ACCOUNT</span>
+      </button>
+
+      <button class="settings-tab-btn" data-tab="preferences">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path
+            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+          </path>
+        </svg>
+        <span>PREFERENCES</span>
+      </button>
+
+      <button class="settings-tab-btn" data-tab="privacy">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        <span>PRIVACY</span>
+      </button>
+    </div>
+
+    <div class="settings-panel-content">
+      <!-- Appearance Tab -->
+      <div class="settings-tab-pane active" id="tab-appearance">
+        <!-- Theme & Display Section -->
+        <div class="settings-section-card">
+          <div class="settings-section-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+              </path>
+            </svg>
+            <h4>THEME & DISPLAY</h4>
+          </div>
+          <div class="settings-section-body">
+            <div class="setting-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                  </path>
+                </svg>
+                <span>Theme Mode</span>
+              </div>
+              <div class="segmented-control" id="theme-mode-control">
+                <button class="segment-btn active" data-value="auto">AUTO</button>
+                <button class="segment-btn" data-value="dark">DARK</button>
+                <button class="segment-btn" data-value="light">LIGHT</button>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><text
+                    x="4" y="16" font-size="12" font-family="serif" fill="currentColor" stroke="none">Aa</text></svg>
+                <span>HUD Font</span>
+              </div>
+              <select id="font-family-select" class="settings-select">
+                <option value="'Oswald', sans-serif">OSWALD</option>
+                <option value="'Inter', sans-serif">INTER</option>
+                <option value="'Roboto Mono', monospace">ROBOTO MONO</option>
+                <option value="'JetBrains Mono', monospace">JETBRAINS</option>
+                <option value="'Azeret Mono', monospace">AZERET</option>
+                <option value="'Orbitron', sans-serif">ORBITRON</option>
+              </select>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="3" y1="9" x2="21" y2="9"></line>
+                  <line x1="9" y1="21" x2="9" y2="9"></line>
+                </svg>
+                <span>Canvas Scale</span>
+              </div>
+              <div class="slider-control-group">
+                <button class="slider-btn" data-action="dec" data-target="ui-scale-slider">−</button>
+                <input type="range" id="ui-scale-slider" min="50" max="150" value="70" step="5">
+                <button class="slider-btn" data-action="inc" data-target="ui-scale-slider">+</button>
+                <span id="scale-value-display" class="scale-value">70%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interface Preferences Section -->
+        <div class="settings-section-card">
+          <div class="settings-section-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="9" y1="21" x2="9" y2="9"></line>
+            </svg>
+            <h4>INTERFACE PREFERENCES</h4>
+          </div>
+          <div class="settings-section-body">
+          </div>
+        </div>
+
+        <!-- Grid Settings Section -->
+        <div class="settings-section-card">
+          <div class="settings-section-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="9" y1="21" x2="9" y2="9"></line>
+            </svg>
+            <h4>GRID OVERLAY</h4>
+          </div>
+          <div class="settings-section-body">
+            <div class="setting-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="3" y1="9" x2="21" y2="9"></line>
+                  <line x1="9" y1="21" x2="9" y2="9"></line>
+                </svg>
+                <span>Grid Type</span>
+              </div>
+              <select id="grid-style-select" class="settings-select">
+                <option value="none">NONE</option>
+                <option value="lines">REGULAR LINES</option>
+                <option value="graph-paper">GRAPH PAPER</option>
+                <option value="dots">REGULAR DOTS</option>
+              </select>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 12H3m18-4H3m18 8H3" />
+                </svg>
+                <span>Grid Size</span>
+              </div>
+              <div class="slider-control-group">
+                <button class="slider-btn" data-action="dec" data-target="grid-size-slider">−</button>
+                <input type="range" id="grid-size-slider" min="20" max="200" value="90" step="2">
+                <button class="slider-btn" data-action="inc" data-target="grid-size-slider">+</button>
+                <span id="grid-size-display" class="scale-value">90px</span>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" opacity="0.3" />
+                  <circle cx="12" cy="12" r="6" />
+                </svg>
+                <span>Opacity</span>
+              </div>
+              <div class="slider-control-group">
+                <button class="slider-btn" data-action="dec" data-target="grid-opacity-slider">−</button>
+                <input type="range" id="grid-opacity-slider" min="0" max="100" value="10" step="5">
+                <button class="slider-btn" data-action="inc" data-target="grid-opacity-slider">+</button>
+                <span id="grid-opacity-display" class="scale-value">10%</span>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19" stroke-width="4" />
+                </svg>
+                <span>Thickness</span>
+              </div>
+              <div class="slider-control-group">
+                <button class="slider-btn" data-action="dec" data-target="grid-thickness-slider">−</button>
+                <input type="range" id="grid-thickness-slider" min="0.5" max="4" value="1" step="0.5">
+                <button class="slider-btn" data-action="inc" data-target="grid-thickness-slider">+</button>
+                <span id="grid-thickness-display" class="scale-value">1px</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gradient Background Section -->
+        <div class="settings-section-card">
+          <div class="settings-section-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <path d="M3 21L21 3"></path>
+            </svg>
+            <h4>GRADIENT BACKGROUND</h4>
+          </div>
+          <div class="settings-section-body">
+            <div class="setting-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <path d="M3 21L21 3"></path>
+                </svg>
+                <span>Enable Gradient</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="gradient-toggle">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-row gradient-colors-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="13.5" cy="6.5" r="2.5"></circle>
+                  <circle cx="6" cy="12" r="2.5"></circle>
+                </svg>
+                <span>Color 1</span>
+              </div>
+              <div class="gradient-picker-group">
+                <input type="color" id="gradient-color-1" value="#FF6B00" class="color-picker-mini">
+                <input type="text" id="gradient-hex-1" value="#FF6B00" placeholder="#FF6B00" class="hex-input-mini">
+              </div>
+            </div>
+
+            <div class="setting-row gradient-colors-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="13.5" cy="6.5" r="2.5"></circle>
+                  <circle cx="19" cy="12" r="2.5"></circle>
+                </svg>
+                <span>Color 2</span>
+              </div>
+              <div class="gradient-picker-group">
+                <input type="color" id="gradient-color-2" value="#FF4500" class="color-picker-mini">
+                <input type="text" id="gradient-hex-2" value="#FF4500" placeholder="#FF4500" class="hex-input-mini">
+              </div>
+            </div>
+
+            <div class="setting-row gradient-colors-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" opacity="0.3" />
+                  <circle cx="12" cy="12" r="6" />
+                </svg>
+                <span>Opacity</span>
+              </div>
+              <div class="slider-control-group">
+                <button class="slider-btn" data-action="dec" data-target="gradient-opacity-slider">−</button>
+                <input type="range" id="gradient-opacity-slider" min="10" max="100" value="100" step="5">
+                <button class="slider-btn" data-action="inc" data-target="gradient-opacity-slider">+</button>
+                <span id="gradient-opacity-display" class="scale-value">100%</span>
+              </div>
+            </div>
+
+            <div class="setting-row gradient-colors-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 3L3 21M12 3v18M3 12h18"></path>
+                </svg>
+                <span>Suggestions</span>
+              </div>
+              <div class="gradient-action-group">
+                <button id="save-gradient-btn" class="settings-action-btn icon-only" title="Save Current">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path
+                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+                    </path>
+                  </svg>
+                </button>
+                <button id="randomize-gradient-btn" class="settings-action-btn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    style="margin-right: 6px;">
+                    <polyline points="16 3 21 3 21 8"></polyline>
+                    <line x1="4" y1="20" x2="21" y2="3"></line>
+                    <polyline points="21 16 21 21 16 21"></polyline>
+                    <line x1="15" y1="15" x2="21" y2="21"></line>
+                    <line x1="4" y1="4" x2="9" y2="9"></line>
+                  </svg>
+                  SHUFFLE
+                </button>
+              </div>
+            </div>
+
+            <div class="setting-row gradient-favorites-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path
+                    d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+                  </path>
+                </svg>
+                <span>Favorites</span>
+              </div>
+              <div id="gradient-favorites-grid" class="gradient-favorites-grid">
+                <!-- Saved gradients will be injected here -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Background Group Removed as requested -->
+
+
+
+
+      <!-- Account Tab (Google + AI) -->
+      <div class="settings-tab-pane" id="tab-account">
+        <!-- Google Services Section -->
+        <div class="settings-section-card">
+          <div class="settings-section-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+              <polyline points="10 17 15 12 10 7"></polyline>
+              <line x1="15" y1="12" x2="3" y2="12"></line>
+            </svg>
+            <h4>GOOGLE SERVICES</h4>
+          </div>
+          <div class="settings-section-body">
+            <div class="setting-row" id="login-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>Google Account</span>
+              </div>
+              <button id="login-btn" class="settings-action-btn">CONNECT</button>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <polyline points="1 20 1 14 7 14"></polyline>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                <span>Manual Sync</span>
+              </div>
+              <button id="force-sync-btn" class="settings-action-btn secondary">REFRESH</button>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span>Upload Notifications</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="upload-notify-toggle" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <!-- AI Features Section -->
+        <div class="settings-section-card">
+          <div class="settings-section-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon
+                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+              </polygon>
+            </svg>
+            <h4>AI FEATURES</h4>
+          </div>
+          <div class="settings-section-body">
+            <div class="setting-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon
+                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                  </polygon>
+                </svg>
+                <span>Natural Language</span>
+                <span class="setting-badge">BETA</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="ai-parsing-toggle">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path
+                    d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3">
+                  </path>
+                </svg>
+                <span>AI Provider</span>
+              </div>
+              <select id="ai-provider-select" class="settings-select">
+                <option value="gemini">GOOGLE GEMINI (Free)</option>
+                <option value="openrouter">OPENROUTER (Multiple Models)</option>
+              </select>
+            </div>
+
+            <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 12px;">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span>API Key</span>
+              </div>
+              <div class="input-with-action" style="width: 100%; gap: 8px;">
+                <input type="password" id="ai-api-key" placeholder="Paste your API key here..." class="hex-input-mini"
+                  style="width: 100%; height: 36px; padding: 0 12px;">
+                <button id="save-ai-key-btn" class="settings-action-btn"
+                  style="height: 36px; min-width: 60px;">SAVE</button>
+              </div>
+              <div style="display: flex; gap: 10px; width: 100%;">
+                <button id="test-ai-conn-btn" class="settings-action-btn"
+                  style="height: 32px; flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+                  CHECK CONNECTION
+                </button>
+              </div>
+              <span class="form-hint" id="ai-key-hint" style="font-size: 11px; opacity: 0.7; line-height: 1.4;">
+                To use AI, get a free key from <a href="https://aistudio.google.com/app/apikey" target="_blank"
+                  style="color: var(--accent-color);">Google AI Studio</a>.
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preferences Tab -->
+      <div class="settings-tab-pane" id="tab-preferences">
+        <!-- Display Preferences Section -->
+        <div class="settings-section-card">
+          <div class="settings-section-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <h4>DISPLAY PREFERENCES</h4>
+          </div>
+          <div class="settings-section-body">
+            <div class="setting-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span>12-Hour Clock Format</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="clock-12h-toggle" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="17 1 21 5 17 9"></polyline>
+                  <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                  <polyline points="7 23 3 19 7 15"></polyline>
+                  <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                </svg>
+                <span>Flip Layout (Clock/Date)</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="clock-swap-toggle">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Privacy Tab -->
+      <div class="settings-tab-pane" id="tab-privacy">
+        <!-- Data Management Section -->
+        <div class="settings-section-card">
+          <div class="settings-section-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+            <h4>DATA MANAGEMENT</h4>
+          </div>
+          <div class="settings-section-body">
+            <div class="setting-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                <span>Clear Cache</span>
+              </div>
+              <button id="clear-drive-btn" class="settings-action-btn danger">REMOVE</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Account Security Section -->
+        <div class="settings-section-card">
+          <div class="settings-section-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            <h4>ACCOUNT SECURITY</h4>
+          </div>
+          <div class="settings-section-body">
+            <div class="setting-row">
+              <div class="setting-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Logout Account</span>
+              </div>
+              <button id="logout-btn" class="settings-action-btn danger">LOGOUT</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="settings-panel-footer">
+      <span class="settings-version">ESSENTIALS V2.1 // ATLABS</span>
+    </div>
+  </div>
+
+  <div id="event-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>ADD EVENT</h3>
+        <button id="close-event-modal">×</button>
+      </div>
+
+      <div class="event-modal-body-scroll">
+        <!-- Event List Section -->
+        <div id="event-list-container" class="event-list-section">
+          <div id="event-list" class="event-list"></div>
+          <button id="show-add-event-form" class="secondary-btn small-btn full-width" style="margin-top: 10px;">+ ADD
+            NEW EVENT</button>
+        </div>
+
+        <!-- Add/Edit Form Section (Hidden by default if events exist) -->
+        <div id="event-form-section" class="event-form hidden">
+          <input type="hidden" id="event-id"> <!-- For Edit Mode -->
+
+          <div class="form-group">
+            <label>Date</label>
+            <input type="text" id="event-date-display" readonly style="opacity:0.7">
+          </div>
+
+          <div class="form-group">
+            <label>Title</label>
+            <input type="text" id="event-title" placeholder="Event Summary..." autofocus>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Time</label>
+              <input type="time" id="event-time">
+            </div>
+            <div class="form-group" style="padding-top:25px;">
+              <label class="checkbox-label">
+                <input type="checkbox" id="event-all-day"> All Day
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group-actions">
+            <button id="cancel-event-form" class="secondary-btn">CANCEL</button>
+            <button id="save-event-btn" class="primary-btn">SAVE EVENT</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="drive-delete-modal" class="modal-overlay hidden" style="z-index: 2100;">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3>CLEAR WORKSPACE</h3>
+        <button id="close-delete-modal">×</button>
+      </div>
+      <div class="delete-modal-body">
+        <p style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 15px;">
+          Select files to delete from <span style="color: var(--accent-color); font-weight: 600;">Essentials
+            Workspace</span>.
+          This action cannot be undone.
+        </p>
+
+        <div class="delete-selection-header"
+          style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 5px;">
+          <label class="checkbox-label" style="font-size: 0.8rem;">
+            <input type="checkbox" id="select-all-delete"> SELECT ALL
+          </label>
+          <span id="selected-count-display" style="font-size: 0.7rem; opacity: 0.6;">0 FILES SELECTED</span>
+        </div>
+
+        <div id="delete-file-list" class="delete-file-list"
+          style="max-height: 300px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 4px; border: 1px solid var(--glass-border);">
+          <!-- Files will be injected here -->
+          <div style="padding: 20px; text-align: center; opacity: 0.5;">Loading files...</div>
+        </div>
+
+        <div style="margin-top: 20px; display: flex; gap: 10px;">
+          <button id="confirm-delete-btn" class="danger-btn" style="flex: 1;" disabled>DELETE SELECTED</button>
+          <button id="cancel-delete-btn" class="secondary-btn" style="flex: 1;">CANCEL</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="lightbox-modal" class="modal-overlay hidden" style="z-index: 2000;">
+    <button id="close-lightbox"
+      style="position:absolute; top:20px; right:20px; background:none; border:none; color:#fff; font-size:2rem; cursor:pointer;">×</button>
+    <img id="lightbox-img"
+      style="max-width:90%; max-height:90%; object-fit:contain; border-radius:4px; box-shadow:0 0 50px rgba(0,0,0,0.8);">
+  </div>
+
+  <!-- Quick Date Selector Overlay (Link Paste) -->
+  <div id="quick-date-overlay" class="quick-date-overlay">
+    <button class="quick-date-btn" data-offset="0">TODAY</button>
+    <button class="quick-date-btn" data-offset="1">TOMORROW</button>
+    <button class="quick-date-btn" data-offset="0.25">6H LATER</button>
+    <button class="quick-date-btn" data-offset="custom">PICK DATE</button>
+  </div>
+
+  <!-- Nexus Bookmark Modal -->
+  <div id="nexus-bookmark-modal" class="modal-overlay hidden">
+    <div class="modal-content nexus-bookmark-modal-content">
+      <div class="modal-header">
+        <h3 id="nexus-modal-title">ADD BOOKMARK</h3>
+        <button id="close-nexus-modal">×</button>
+      </div>
+      <div class="nexus-bookmark-form">
+        <div class="form-group">
+          <label>Link URL</label>
+          <div class="input-with-action">
+            <input type="url" id="nexus-bookmark-url" placeholder="https://example.com" autocomplete="off">
+            <button type="button" id="nexus-paste-btn" class="input-action-btn" title="Paste from clipboard">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Site Name</label>
+          <div class="input-with-status">
+            <input type="text" id="nexus-bookmark-name" placeholder="Site name..." autocomplete="off">
+            <span id="nexus-name-status" class="input-status"></span>
+          </div>
+          <span class="form-hint">Auto-fetched from history or page title. You can edit it.</span>
+        </div>
+        <div class="form-group" style="margin-top: 16px;">
+          <button id="nexus-save-bookmark-btn" class="primary-btn">SAVE BOOKMARK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════════
+       ONBOARDING MODAL (Premium 2026 Experience)
+       ═══════════════════════════════════════════════════════════════════════════ -->
+  <div id="onboarding-modal">
+    <div class="ob-bg-layer">
+      <div class="ob-blob ob-blob-1"></div>
+      <div class="ob-blob ob-blob-2"></div>
+      <div class="ob-blob ob-blob-3"></div>
+      <div class="ob-grid-overlay"></div>
+    </div>
+
+    <!-- Progress Indicator -->
+    <div class="ob-progress-container">
+      <div class="ob-progress-bar">
+        <div class="ob-progress-fill" id="ob-progress-fill"></div>
+      </div>
+      <div class="ob-steps-count"><span id="ob-current-step">1</span>/5</div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="ob-content">
+
+      <!-- PHASE 1: WELCOME -->
+      <section class="ob-phase ob-phase-1 active" data-phase="1">
+        <div class="header-logo">
+          <div class="logo-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+            </svg>
+          </div>
+          <div class="logo-text">ESSENTIALS 2.1</div>
+        </div>
+
+        <h1 class="ob-title">Welcome to Essentials</h1>
+        <p class="ob-subtitle">Your new command center to stop procrastinating and chase your dreams — one tab at a
+          time.</p>
+
+        <div class="quote-container-hero">
+          <p class="quote-text">"You're in the elite 0.1% who turned a blank tab into a command center. Essentials —
+            where top performers start every day."</p>
+        </div>
+
+        <div class="ob-actions">
+          <button class="ob-btn ob-btn-ghost" id="ob-skip-intro">Skip for now</button>
+          <button class="ob-btn ob-btn-primary ob-btn-lg" id="ob-start-btn">Get Started</button>
+        </div>
+      </section>
+
+      <!-- PHASE 2: PERSONALIZATION -->
+      <section class="ob-phase ob-phase-2" data-phase="2">
+        <h2 class="ob-section-title">Make it Yours</h2>
+        <p class="ob-section-subtitle">Customize your command center to fit your workflow.</p>
+
+        <div class="ob-live-preview">
+          <div class="ob-dashboard-preview ob-live">
+            <div class="ob-preview-clock" id="ob-preview-clock">10:42</div>
+            <div class="ob-preview-date" id="ob-preview-date">MONDAY, OCTOBER 24</div>
+          </div>
+        </div>
+
+        <div class="ob-cards-grid">
+          <div class="ob-card">
+            <div class="ob-card-header">
+              <span class="ob-card-icon">🎨</span>
+              <span class="ob-card-title">Theme</span>
+            </div>
+            <div class="ob-theme-selector" id="ob-theme-selector">
+              <button class="ob-theme-btn active" data-theme="auto">Auto</button>
+              <button class="ob-theme-btn" data-theme="dark">Dark</button>
+              <button class="ob-theme-btn" data-theme="light">Light</button>
+            </div>
+          </div>
+
+          <div class="ob-card">
+            <div class="ob-card-header">
+              <span class="ob-card-icon">📐</span>
+              <span class="ob-card-title">Layout</span>
+            </div>
+            <div class="ob-layout-options" id="ob-layout-options">
+              <div class="ob-layout-option active" data-layout="balanced">
+                <div class="ob-layout-preview">
+                  <div class="mock-clock"></div>
+                  <div class="mock-date"></div>
+                </div>
+              </div>
+              <div class="ob-layout-option" data-layout="clock-first">
+                <div class="ob-layout-preview" style="flex-direction: column-reverse;">
+                  <div class="mock-clock"></div>
+                  <div class="mock-date"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ob-card">
+            <div class="ob-card-header">
+              <span class="ob-card-icon">✨</span>
+              <span class="ob-card-title">Accent</span>
+            </div>
+            <div class="ob-color-swatches" id="ob-color-swatches">
+              <button class="ob-color-swatch active" style="background: #FF6B00;" data-color="#FF6B00"></button>
+              <button class="ob-color-swatch" style="background: #8B5CF6;" data-color="#8B5CF6"></button>
+              <button class="ob-color-swatch" style="background: #06B6D4;" data-color="#06B6D4"></button>
+              <button class="ob-color-swatch" style="background: #22C55E;" data-color="#22C55E"></button>
+              <button class="ob-color-swatch" style="background: #F43F5E;" data-color="#F43F5E"></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="ob-actions">
+          <button class="ob-btn ob-btn-primary" id="ob-apply-continue">Apply & Continue</button>
+        </div>
+      </section>
+
+      <!-- PHASE 3: GOOGLE SYNC -->
+      <section class="ob-phase ob-phase-3" data-phase="3">
+        <div class="ob-trust-badge-lg">
+          <span class="ob-trust-icon">🔒</span>
+          <span>Official Google Partner</span>
+        </div>
+
+        <h2 class="ob-section-title">Sync Your Life</h2>
+        <p class="ob-section-subtitle">Connect your account to access Calendar, Tasks, Gmail, and Drive directly from
+          your new tab.</p>
+
+        <div class="ob-benefits-list">
+          <div class="ob-benefit-item">
+            <div class="ob-benefit-icon">📅</div>
+            <div class="ob-benefit-text">
+              <strong>Calendar & Events</strong>
+              <span>See upcoming meetings and join video calls instantly.</span>
+            </div>
+          </div>
+          <div class="ob-benefit-item">
+            <div class="ob-benefit-icon">✅</div>
+            <div class="ob-benefit-text">
+              <strong>Tasks & To-Dos</strong>
+              <span>Manage your tasks and sync across all devices.</span>
+            </div>
+          </div>
+          <div class="ob-benefit-item">
+            <div class="ob-benefit-icon">✉️</div>
+            <div class="ob-benefit-text">
+              <strong>Gmail Integration</strong>
+              <span>Read and reply to important emails without distraction.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="ob-actions-stack" id="ob-connect-buttons">
+          <button class="ob-btn ob-btn-primary ob-btn-lg" id="ob-google-connect-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px;">
+              <path
+                d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .533 5.333.533 12S5.867 24 12.48 24c3.44 0 6.053-1.147 8.16-3.293 2.133-2.133 2.907-5.133 2.907-7.547 0-.76-.053-1.467-.173-2.24h-10.92z" />
+            </svg>
+            Connect with Google
+          </button>
+          <button class="ob-btn ob-btn-ghost" id="ob-offline-mode-btn">Use Offline Mode</button>
+        </div>
+
+        <div class="ob-connect-success hidden" id="ob-connect-success">
+          <div class="ob-success-icon">✓</div>
+          <h3>Connected Successfully!</h3>
+        </div>
+
+        <div class="ob-permissions-note">
+          <p>We only ask for permissions needed to display your data. Your data never leaves your browser.</p>
+        </div>
+      </section>
+
+      <!-- PHASE 4: COMMAND CENTER INTRO -->
+      <section class="ob-phase ob-phase-4" data-phase="4">
+        <div class="ob-hero-visual">
+          <div class="ob-browser-mockup">
+            <div class="ob-mock-header">
+              <div class="ob-mock-dots"><span></span><span></span><span></span></div>
+              <div class="ob-mock-bar"></div>
+            </div>
+            <div class="ob-mock-body">
+              <div class="ob-mock-hero-text"></div>
+              <div class="ob-mock-grid"></div>
+            </div>
+          </div>
+        </div>
+
+        <h2 class="ob-section-title">Your Command Center</h2>
+        <p class="ob-section-subtitle">Everything you need, one keypress away. Let's take a quick tour of what's
+          possible.</p>
+
+        <div class="ob-actions">
+          <button class="ob-btn ob-btn-primary ob-btn-lg" id="ob-enter-dashboard-btn">Take the Tour</button>
+        </div>
+      </section>
+
+      <!-- PHASE 5: FEATURE TOUR CONTAINER -->
+      <section class="ob-phase ob-phase-5" data-phase="5">
+        <!-- This triggers a separate overlay -->
+      </section>
+
+    </div>
+
+    <!-- Navigation Bar (Bottom) - HIDDEN initially -->
+    <nav class="onboarding-nav" id="ob-navigation">
+      <div class="ob-nav-left">
+        <button class="ob-btn ob-btn-ghost ob-btn-sm" id="ob-back-btn" disabled>Back</button>
+      </div>
+      <div class="ob-nav-center">
+        <button class="ob-btn ob-btn-ghost ob-btn-sm" id="ob-skip-btn">Skip for now</button>
+      </div>
+      <div class="ob-nav-right">
+        <button class="ob-btn ob-btn-primary ob-btn-sm" id="ob-continue-btn">Continue</button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- TOUR OVERLAY -->
+  <div class="ob-tour-overlay" id="ob-tour-overlay">
+    <div class="ob-tour-carousel">
+      <button class="ob-tour-close" id="ob-tour-close">×</button>
+
+      <div class="ob-tour-slides">
+        <!-- Slide 1: Session Focus -->
+        <div class="ob-tour-slide active" data-slide="1">
+          <div class="ob-tour-icon">🎯</div>
+          <h3 class="ob-tour-title">Session Focus & Site Blocking</h3>
+          <p class="ob-tour-desc">Track your browsing time and block distracting sites.</p>
+        </div>
+
+        <!-- Slide 2: Smart Tasks -->
+        <div class="ob-tour-slide" data-slide="2">
+          <div class="ob-tour-icon">📝</div>
+          <h3 class="ob-tour-title">Smart Natural Language Tasks</h3>
+          <p class="ob-tour-desc">Type "Call mom tomorrow at 5pm" and AI handles the rest.</p>
+        </div>
+
+        <!-- Slide 3: Drive Upload -->
+        <div class="ob-tour-slide" data-slide="3">
+          <div class="ob-tour-icon">☁️</div>
+          <h3 class="ob-tour-title">Drag & Drop Google Drive</h3>
+          <p class="ob-tour-desc">Upload files instantly to your Drive.</p>
+        </div>
+
+        <!-- Slide 4: Calendar -->
+        <div class="ob-tour-slide" data-slide="4">
+          <div class="ob-tour-icon">📅</div>
+          <h3 class="ob-tour-title">Calendar & Quick Add</h3>
+          <p class="ob-tour-desc">Manage your schedule without leaving the tab.</p>
+        </div>
+
+        <!-- Slide 5: Gmail -->
+        <div class="ob-tour-slide" data-slide="5">
+          <div class="ob-tour-icon">✉️</div>
+          <h3 class="ob-tour-title">Gmail Integration</h3>
+          <p class="ob-tour-desc">Check and reply to emails instantly.</p>
+        </div>
+      </div>
+
+      <div class="ob-tour-nav">
+        <div class="ob-tour-dots" id="ob-tour-dots">
+          <span class="ob-tour-dot active" data-slide="1"></span>
+          <span class="ob-tour-dot" data-slide="2"></span>
+          <span class="ob-tour-dot" data-slide="3"></span>
+          <span class="ob-tour-dot" data-slide="4"></span>
+          <span class="ob-tour-dot" data-slide="5"></span>
+        </div>
+        <div class="ob-tour-actions">
+          <button class="ob-btn ob-btn-ghost ob-btn-sm" id="ob-tour-skip">Skip</button>
+          <button class="ob-btn ob-btn-primary ob-btn-sm" id="ob-tour-next">Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confetti Container -->
+  <div class="ob-confetti" id="ob-confetti"></div>
+
+  <!-- Notification Toast -->
+  <div id="toast-container" class="toast-container"></div>
+  <script src="libs/jszip.min.js"></script>
+  <script src="performance-utils.js"></script>
+  <script src="nexus.js"></script>
+  <script src="script.js"></script>
+
+
+</body>
+
+</html>

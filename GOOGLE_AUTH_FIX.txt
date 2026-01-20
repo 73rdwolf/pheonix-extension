@@ -1,0 +1,73 @@
+================================================================================
+GOOGLE OAUTH CONNECTION - RECOVERY & DOCUMENTATION
+================================================================================
+
+This document explains how the Google OAuth connection works in this extension
+and how to fix common errors (like 'deleted_client' or 'redirect_uri_mismatch').
+
+--------------------------------------------------------------------------------
+1. CORE ARCHITECTURE
+--------------------------------------------------------------------------------
+The extension uses a "Hybrid Auth" approach to ensure maximum reliability:
+
+A. PRIMARY FLOW (chrome.identity.getAuthToken):
+   - Uses the 'oauth2' section in manifest.json.
+   - Automatically handles the login if the browser session is active.
+   - Binds directly to the Extension ID in the Google Cloud Console.
+
+B. FALLBACK FLOW (chrome.identity.launchWebAuthFlow):
+   - Used when the first flow fails or when a visible login is forced.
+   - Points to accounts.google.com/o/oauth2/auth.
+   - Redirects to: https://[EXTENSION_ID].chromiumapp.org/
+
+C. TOKEN SNATCHER (background.js):
+   - A background listener monitor tabs for "access_token=" in the URL.
+   - This captures the token even if the browser fails to fully "load" the 
+     final redirect page. This makes the login 100% stable.
+
+--------------------------------------------------------------------------------
+2. ESSENTIAL SETTINGS (Google Cloud Console)
+--------------------------------------------------------------------------------
+To make the connection work, the Google Cloud Project MUST have these settings:
+
+- TYPE: "Web Application" (Recommended for better redirect control).
+- AUTHORIZED REDIRECT URIs:
+  Must include: https://dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org/
+- SCOPES:
+  - https://www.googleapis.com/auth/gmail.readonly
+  - https://www.googleapis.com/auth/gmail.modify
+  - https://www.googleapis.com/auth/gmail.send
+  - https://www.googleapis.com/auth/calendar
+  - https://www.googleapis.com/auth/tasks
+  - https://www.googleapis.com/auth/drive.file
+  - https://www.googleapis.com/auth/userinfo.email
+  - https://www.googleapis.com/auth/userinfo.profile
+
+--------------------------------------------------------------------------------
+3. TROUBLESHOOTING COMMON ERRORS
+--------------------------------------------------------------------------------
+
+ERROR: Error 401: deleted_client
+CAUSE: The Client ID in your code has been deleted in the Google Console.
+FIX:   Generate a new Client ID and update it in these 3 files:
+       1. manifest.json (oauth2.client_id)
+       2. script.js (const clientId = "...")
+       3. background.js (const clientId = "...")
+
+ERROR: Error 400: redirect_uri_mismatch
+CAUSE: The "Authorized redirect URIs" in Google Console doesn't match the code.
+FIX:   Copy the Extension ID from chrome://extensions and add it to the Console:
+       https://[PASTE_ID_HERE].chromiumapp.org/
+
+ERROR: Popup closes but nothing happens
+CAUSE: Cache mismatch or script hanging.
+FIX:   Reload the extension in chrome://extensions and perform a Hard Refresh
+       (Ctrl+Shift+R) on the dashboard page.
+
+--------------------------------------------------------------------------------
+4. CONFIGURATION SUMMARY
+--------------------------------------------------------------------------------
+Current Extension ID: dchipjncdebfhcfceidlhhlccnogbjjl
+Current Client ID:    149193288904-fkjovpramlmte3958822t0cgmlgqr7lh.apps.googleusercontent.com
+Redirect URI:         https://dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org/
+================================================================================

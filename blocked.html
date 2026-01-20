@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Focus Mode Active</title>
+  <link id="page-favicon" rel="icon" href="" type="image/x-icon">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* BULLETPROOF STACKING CONTEXT - Ensures blocked page is ALWAYS on top */
+    html {
+      /* Create isolated stacking context at the root */
+      isolation: isolate;
+      /* Maximum possible z-index to defeat any dashboard elements */
+      z-index: 2147483647;
+      position: relative;
+      /* Ensure full viewport coverage */
+      min-height: 100vh;
+      width: 100%;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f0f14 0%, #1a1a24 50%, #0f0f14 100%);
+      color: #e8eaed;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 20px;
+      /* Fixed position ensures body covers entire viewport regardless of scroll */
+      position: fixed;
+      inset: 0;
+      /* Inherit isolation and ensure body is also max z-index */
+      isolation: isolate;
+      z-index: 2147483647;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    /* Subtle grid background */
+    body::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 50px 50px;
+      pointer-events: none;
+    }
+
+    .container {
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Shield Icon - smaller */
+    .icon-wrapper {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+      position: relative;
+    }
+
+    .shield-icon {
+      width: 100%;
+      height: 100%;
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 0.7;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1.05);
+      }
+    }
+
+    .shield-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Status Badge */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, rgba(255, 107, 0, 0.15), rgba(255, 107, 0, 0.05));
+      border: 1px solid rgba(255, 107, 0, 0.3);
+      color: #ff6b00;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .status-badge .dot {
+      width: 6px;
+      height: 6px;
+      background: #ff6b00;
+      border-radius: 50%;
+      animation: blink 1.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+    }
+
+    .domain-display {
+      font-size: 1rem;
+      color: #8ab4f8;
+      font-weight: 500;
+      margin-bottom: 20px;
+      word-break: break-all;
+    }
+
+    /* Info Card */
+    .info-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 18px 22px;
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .info-card h3 {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #ff6b00;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-card h3 svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .info-card p {
+      font-size: 0.85rem;
+      color: #b0b5bd;
+      line-height: 1.6;
+      margin-bottom: 0;
+    }
+
+    .info-card p strong {
+      color: #e8eaed;
+      font-weight: 500;
+    }
+
+    /* How to Unblock Section */
+    .unblock-guide {
+      background: linear-gradient(135deg, rgba(102, 204, 138, 0.08), rgba(102, 204, 138, 0.02));
+      border: 1px solid rgba(102, 204, 138, 0.2);
+      border-radius: 12px;
+      padding: 18px 22px;
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .unblock-guide h3 {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #66cc8a;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .unblock-guide h3 svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .step-number {
+      width: 24px;
+      height: 24px;
+      min-width: 24px;
+      background: rgba(102, 204, 138, 0.15);
+      border: 1px solid rgba(102, 204, 138, 0.3);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #66cc8a;
+    }
+
+    .step-content {
+      font-size: 0.85rem;
+      color: #b0b5bd;
+      line-height: 1.5;
+      padding-top: 2px;
+    }
+
+    .step-content strong {
+      color: #e8eaed;
+      font-weight: 500;
+    }
+
+    .step-content code {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 0.8rem;
+      color: #8ab4f8;
+    }
+
+    /* Note */
+    .auto-refresh-note {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(138, 180, 248, 0.08);
+      border: 1px solid rgba(138, 180, 248, 0.2);
+      border-radius: 10px;
+      padding: 10px 16px;
+      margin-bottom: 20px;
+    }
+
+    .auto-refresh-note svg {
+      width: 16px;
+      height: 16px;
+      color: #8ab4f8;
+      flex-shrink: 0;
+    }
+
+    .auto-refresh-note p {
+      font-size: 0.8rem;
+      color: #8ab4f8;
+      text-align: left;
+    }
+
+    /* Footer */
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      opacity: 0.4;
+      font-size: 0.7rem;
+      color: #9aa0a6;
+    }
+
+    .footer svg {
+      width: 14px;
+      height: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- Shield Icon -->
+    <div class="icon-wrapper">
+      <div class="shield-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="url(#gradient)" stroke-width="1.5" stroke-linecap="round"
+          stroke-linejoin="round">
+          <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#ff6b00" />
+              <stop offset="100%" style="stop-color:#ff9500" />
+            </linearGradient>
+          </defs>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+      </div>
+    </div>
+
+    <!-- Status -->
+    <div class="status-badge">
+      <span class="dot"></span>
+      Focus Mode Active
+    </div>
+
+    <h1>Site Blocked</h1>
+    <p class="domain-display" id="domain-display">—</p>
+
+    <!-- Why Blocked -->
+    <div class="info-card">
+      <h3>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 16v-4M12 8h.01" />
+        </svg>
+        Why is this blocked?
+      </h3>
+      <p>
+        You've added <strong id="domain-inline">this site</strong> to your <strong>blocked list</strong> in Essentials
+        to help you stay focused.
+        This is a self-imposed restriction to reduce distractions.
+      </p>
+    </div>
+
+    <!-- How to Unblock -->
+    <div class="unblock-guide">
+      <h3>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+        </svg>
+        How to Unblock
+      </h3>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            Open a <strong>new tab</strong> to access your Essentials dashboard.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            Find the <strong>Session Focus</strong> module on the right side.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <strong>Double-click</strong> on <code id="domain-code">the domain</code> to unblock.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Auto-refresh Note -->
+    <div class="auto-refresh-note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="23 4 23 10 17 10" />
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+      </svg>
+      <p>
+        <strong>Auto-restore:</strong> Once unblocked, this tab will automatically refresh.
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+      </svg>
+      Essentials Focus Protection
+    </div>
+  </div>
+
+  <script>
+    // Parse domain from URL params - run immediately
+    (function () {
+      try {
+        const url = new URL(window.location.href);
+        const domain = url.searchParams.get('domain') || 'Unknown Site';
+        const originalUrl = url.searchParams.get('url') || '';
+        const originalTitle = url.searchParams.get('title') || '';
+        const originalFavicon = url.searchParams.get('favicon') || '';
+
+        // Update all domain displays
+        const domainDisplay = document.getElementById('domain-display');
+        const domainInline = document.getElementById('domain-inline');
+        const domainCode = document.getElementById('domain-code');
+
+        if (domainDisplay) domainDisplay.textContent = domain;
+        if (domainInline) domainInline.textContent = domain;
+        if (domainCode) domainCode.textContent = domain;
+
+        // Keep original tab title - don't change it so user knows which tab is blocked
+        if (originalTitle) {
+          document.title = originalTitle;
+        }
+        // If no original title passed, keep the static title from HTML
+
+        // Set original favicon - keep original icon so user can identify the tab
+        if (originalFavicon) {
+          const faviconEl = document.getElementById('page-favicon');
+          if (faviconEl) {
+            faviconEl.href = originalFavicon;
+          }
+        }
+
+        // Store for later use
+        window.blockedDomain = domain;
+        window.originalUrl = originalUrl;
+      } catch (e) {
+        console.error('Error parsing blocked page params:', e);
+      }
+    })();
+
+    // Listen for unblock message from extension
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+      chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
+        if (message.type === 'domain-unblocked' && message.domain === window.blockedDomain) {
+          // Redirect back to original URL
+          if (window.originalUrl) {
+            window.location.href = window.originalUrl;
+          } else if (window.blockedDomain) {
+            window.location.href = 'https://' + window.blockedDomain;
+          }
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>
