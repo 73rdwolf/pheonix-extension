@@ -10,8 +10,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load saved settings from chrome.storage.local FIRST (before any UI initialization)
   await new Promise((resolve) => {
-    chrome.storage.local.get(['theme_preference', 'theme_mode', 'accent_color', 'gradient_enabled', 'gradient_color_1', 'gradient_color_2', 'clock_swap_enabled', 'font_hud_preference', 'solid_bg_color'], (result) => {
+    chrome.storage.local.get([
+      'theme_preference', 'theme_mode', 'accent_color', 'gradient_enabled', 'gradient_color_1', 'gradient_color_2', 'clock_swap_enabled', 'font_hud_preference', 'solid_bg_color',
+      'isLoggedIn', 'google_user_persistent', 'last_known_email', 'last_known_name', 'last_known_picture'
+    ], (result) => {
       console.log('[Dashboard] Loaded settings from chrome.storage.local:', result);
+
+      // --- IMMEDIATE AUTH UI RESTORATION ---
+      const isLoggedIn = result.isLoggedIn;
+      const isPersistent = result.google_user_persistent;
+      if (isLoggedIn || isPersistent) {
+        // Enforce logged-in state immediately to prevent flicker
+        document.body.classList.add('logged-in');
+        const loginRow = document.getElementById('login-row');
+        const headerLoginBtn = document.getElementById('header-login-btn');
+        if (loginRow) loginRow.style.display = 'none';
+        if (headerLoginBtn) headerLoginBtn.style.display = 'none';
+
+        // Restore profile from cache
+        const profilePic = document.getElementById('user-profile-pic');
+        const profileName = document.getElementById('user-display-name');
+        const profileEmail = document.getElementById('user-email');
+        if (profileEmail && result.last_known_email) profileEmail.textContent = result.last_known_email.toUpperCase();
+        if (profileName && result.last_known_name) profileName.textContent = result.last_known_name;
+        if (profilePic && result.last_known_picture) profilePic.src = result.last_known_picture;
+      }
+      // ------------------------------------
 
       // Apply theme
       const theme = result.theme_mode || result.theme_preference || 'auto';
@@ -999,11 +1023,9 @@ async function refreshAuthToken() {
   // Silent refresh failed - check if user is persistent
   const storage = await new Promise(resolve => chrome.storage.local.get(["isLoggedIn", "google_user_persistent"], resolve));
   if (storage.isLoggedIn && storage.google_user_persistent) {
-    console.log("[Google API] Silent refresh failed but user is persistent. Triggering interactive auth...");
-    // For persistent users, automatically trigger interactive auth
-    // This will open a tab and the background script will capture the token
-    attemptInteractiveRefresh(true);
-    // Return null - the token will be captured by background script and handleNewToken will be called
+    console.log("[Google API] Silent refresh failed but user is persistent. User needs to manually reconnect to resume sync.");
+    const profileEmail = document.getElementById('user-email');
+    if (profileEmail) profileEmail.textContent = 'SESSION EXPIRED (RECONNECT)';
     return null;
   } else if (storage.isLoggedIn) {
     console.log("[Google API] Silent refresh failed and user is not persistent. Clearing login state.");
@@ -1101,6 +1123,13 @@ async function updateProfileInSettings(token, retryCount = 0) {
       if (profilePic) profilePic.src = data.picture || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
       if (profileName) profileName.textContent = data.name || 'USER';
       if (profileEmail) profileEmail.textContent = data.email || 'CONNECTED';
+
+      // CACHE PROFILE INFO FOR "FOREVER" PERSISTENCE
+      chrome.storage.local.set({
+        "last_known_email": data.email,
+        "last_known_name": data.name,
+        "last_known_picture": data.picture
+      });
 
       if (loginRow) loginRow.style.display = 'none';
       if (loginBtn) loginBtn.style.display = 'none';
@@ -1419,22 +1448,20 @@ function initLogin() {
     const isPersistent = authVars.google_user_persistent;
 
     if (isSilent || isPersistent) {
-      // For persistent users, always try to auto-reconnect
+      // For persistent users, avoid automatic tab-based reconnect without user action
       if (isPersistent) {
-        console.log("[Auth] Persistent user detected. Auto-triggering interactive auth for forever login...");
+        console.log("[Auth] Persistent user detected on auth failure. Updating UI for manual reconnect.");
         const profileEmail = document.getElementById('user-email');
-        if (profileEmail) profileEmail.textContent = 'RECONNECTING...';
+        if (profileEmail) profileEmail.textContent = 'SESSION EXPIRED (RECONNECT)';
 
-        // Keep UI in logged-in state
+        // Keep UI in logged-in state to avoid "disconnected" flickers
         const loginRow = document.getElementById('login-row');
         const headerLoginBtn = document.getElementById('header-login-btn');
         if (loginRow) loginRow.style.display = 'none';
         if (headerLoginBtn) headerLoginBtn.style.display = 'none';
         document.body.classList.add('logged-in');
 
-        // Automatically trigger interactive auth to restore persistent session
-        chrome.runtime.sendMessage({ type: 'START_TOKEN_SCAVENGER' }).catch(() => { });
-        attemptInteractiveRefresh(true); // Force visible login to restore session
+        // We DO NOT trigger attemptInteractiveRefresh(true) here anymore
         return;
       } else {
         // Non-persistent user, just show connecting state
@@ -1475,14 +1502,9 @@ function initLogin() {
     }
     if (message.type === 'AUTO_RECONNECT_NEEDED') {
       // Background script detected persistent user needs reconnection
-      console.log("[Auth] Auto-reconnect needed for persistent user.");
-      chrome.storage.local.get(["isLoggedIn", "google_user_persistent"], (result) => {
-        if (result.isLoggedIn || result.google_user_persistent) {
-          // Trigger interactive auth automatically
-          chrome.runtime.sendMessage({ type: 'START_TOKEN_SCAVENGER' }).catch(() => { });
-          attemptInteractiveRefresh(true);
-        }
-      });
+      console.log("[Auth] Auto-reconnect notice received. Updating UI for manual reconnect.");
+      const profileEmail = document.getElementById('user-email');
+      if (profileEmail) profileEmail.textContent = 'SESSION EXPIRED (RECONNECT)';
     }
   });
 }
@@ -4562,22 +4584,22 @@ async function checkAuthStatus() {
       // Both silent refresh and stored token validation failed
       console.log("[Auth] Session expired.");
 
-      // For persistent users, auto-reconnect instead of clearing state
+      // For persistent users, avoid automatic tab opening
+      // Instead, we mark the session as "Needs Refresh" and wait for user interaction
       if (isPersistent || isLoggedIn) {
-        console.log("[Auth] Persistent user detected. Auto-triggering interactive auth for forever login...");
+        console.log("[Auth] Persistent user detected. Marking session as expired for manual reconnect.");
         const profileEmail = document.getElementById('user-email');
-        if (profileEmail) profileEmail.textContent = 'RECONNECTING...';
+        if (profileEmail) profileEmail.textContent = 'SESSION EXPIRED (RECONNECT)';
 
-        // Keep UI in logged-in state and flags
+        // Keep UI in logged-in style to maintain the "Connected" feeling
         await chrome.storage.local.set({
           "isLoggedIn": true,
           "google_user_persistent": true
         });
         hideConnectUI();
 
-        // Automatically trigger interactive auth to restore persistent session
-        chrome.runtime.sendMessage({ type: 'START_TOKEN_SCAVENGER' }).catch(() => { });
-        attemptInteractiveRefresh(true); // Force visible login to restore session
+        // We will NOT trigger attemptInteractiveRefresh(true) here because it opens a tab.
+        // Instead, the user will see the status in the profile or a notification if they try to sync.
         return;
       } else {
         // Non-persistent user - clear state

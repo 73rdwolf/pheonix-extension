@@ -265,21 +265,19 @@ async function validateAndRefreshTokenOnStartup() {
                     // - User is logged into Chrome with their Google account
                     // - Extension was previously authorized
                     // Chrome will only show a prompt if it truly can't refresh the token
-                    chrome.identity.getAuthToken({ interactive: true, scopes: SCOPES }, (interactiveToken) => {
+                    chrome.identity.getAuthToken({ interactive: false, scopes: SCOPES }, (interactiveToken) => {
                         if (chrome.runtime.lastError || !interactiveToken) {
-                            console.warn('[Background] Interactive auth also failed:', chrome.runtime.lastError?.message);
-                            // Step 3: Keep flags for UI to handle manual reconnection as last resort
+                            console.warn('[Background] Proactive silent auth failed:', chrome.runtime.lastError?.message);
+                            // Keep flags for UI to handle manual reconnection as last resort
                             chrome.storage.local.set({
                                 "isLoggedIn": true,
                                 "google_user_persistent": true
                             });
-                            // Notify UI to trigger tab-based auth (user interaction required)
-                            chrome.runtime.sendMessage({
-                                type: 'AUTO_RECONNECT_NEEDED'
-                            }).catch(() => { });
+                            // We used to send AUTO_RECONNECT_NEEDED here, but that often triggered
+                            // intrusive UI. We'll let the New Tab page handle this when it loads.
                         } else {
                             // Success! Token refreshed via Chrome's Identity API
-                            console.log('[Background] Interactive auth succeeded - token refreshed automatically.');
+                            console.log('[Background] Startup silent auth succeeded - token refreshed automatically.');
                             const authTimestamp = Date.now();
                             chrome.storage.local.set({
                                 "google_access_token": interactiveToken,
@@ -287,11 +285,6 @@ async function validateAndRefreshTokenOnStartup() {
                                 "google_user_persistent": true,
                                 "google_auth_timestamp": authTimestamp
                             });
-                            // Notify UI of successful reconnection so it can sync data
-                            chrome.runtime.sendMessage({
-                                type: 'token_refreshed_silently',
-                                token: interactiveToken
-                            }).catch(() => { });
                         }
                     });
                 } else {
@@ -302,7 +295,6 @@ async function validateAndRefreshTokenOnStartup() {
                         "google_access_token": null,
                         "google_user_persistent": false
                     });
-                    chrome.storage.local.remove(["google_access_token"]);
                 }
             } else {
                 console.log('[Background] Token refreshed automatically by Chrome (silent auth succeeded).');
