@@ -952,21 +952,9 @@ async function googleApiFetch(url, options = {}, retryCount = 0) {
         const isPersistent = authVars.google_user_persistent && authVars.isLoggedIn;
 
         if (isPersistent) {
-          // Interactive auth was triggered - wait for token to be captured
-          console.log("[Google API] Silent refresh failed but user is persistent. Interactive auth triggered - waiting for token...");
-          // Wait up to 10 seconds for token to be captured, checking every 500ms
-          for (let i = 0; i < 20; i++) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-            const tokenCheck = await new Promise(resolve => chrome.storage.local.get(["google_access_token", "isLoggedIn"], result => resolve(result)));
-            if (tokenCheck.google_access_token && tokenCheck.isLoggedIn) {
-              console.log("[Google API] Token captured! Retrying API call...");
-              const newOptions = { ...options };
-              if (!newOptions.headers) newOptions.headers = {};
-              newOptions.headers['Authorization'] = `Bearer ${tokenCheck.google_access_token}`;
-              return googleApiFetch(url, newOptions, retryCount + 1);
-            }
-          }
-          console.warn("[Google API] Token not captured within timeout. API call will fail.");
+          // Mark UI as needing reconnect but don't show ugly JSON alert
+          console.log("[Google API] Silent refresh failed but user is persistent. Notifying UI.");
+          window.dispatchEvent(new CustomEvent('google_auth_failed', { detail: { silent: true } }));
         } else {
           // Only dispatch auth_failed for non-persistent users
           console.error("[Google API] Silent refresh failed during API call. Dispatching auth_failed.");
@@ -1025,7 +1013,17 @@ async function refreshAuthToken() {
   if (storage.isLoggedIn && storage.google_user_persistent) {
     console.log("[Google API] Silent refresh failed but user is persistent. User needs to manually reconnect to resume sync.");
     const profileEmail = document.getElementById('user-email');
-    if (profileEmail) profileEmail.textContent = 'SESSION EXPIRED (RECONNECT)';
+    if (profileEmail) {
+      profileEmail.innerHTML = 'SESSION EXPIRED <span id="reconnect-trigger" style="text-decoration: underline; color: #ff9800; cursor: pointer; font-weight: bold; border-bottom: 2px solid #ff9800; padding-bottom: 2px; transition: all 0.2s ease;">(RECONNECT)</span>';
+
+      const trigger = document.getElementById('reconnect-trigger');
+      if (trigger) {
+        trigger.title = "Click to reconnect Google account and resume syncing";
+        // Ensure hover effect
+        trigger.onmouseover = () => trigger.style.color = '#fff';
+        trigger.onmouseout = () => trigger.style.color = '#ff9800';
+      }
+    }
     return null;
   } else if (storage.isLoggedIn) {
     console.log("[Google API] Silent refresh failed and user is not persistent. Clearing login state.");
@@ -1294,7 +1292,24 @@ function showNotification(msg, type = 'info') {
     <span class="notify-icon">${icons[type] || icons.info}</span>
     <span class="notify-msg"></span>
   `;
-  notifyEl.querySelector('.notify-msg').textContent = msg;
+
+  // CLEANUP: If msg is a raw Google Error JSON or HTTP 401 status, prettify it or suppress it
+  let cleanMsg = msg;
+  const isAuthError = typeof msg === 'string' && (
+    msg.includes('"code": 401') ||
+    msg.includes('HTTP 401') ||
+    msg.includes('401.') ||
+    msg.includes('invalid authentication credentials') ||
+    msg.includes('Login required')
+  );
+
+  if (isAuthError) {
+    cleanMsg = "SESSION EXPIRED. PLEASE CLICK RECONNECT IN YOUR PROFILE.";
+    type = 'warning';
+    notifyEl.className = 'warning'; // Update class immediately
+  }
+
+  notifyEl.querySelector('.notify-msg').textContent = cleanMsg;
 
   // Trigger animation
   void notifyEl.offsetWidth; // Force reflow
@@ -1429,6 +1444,14 @@ function initLogin() {
     console.log("[Auth] Login tab opened (Fallback). Background snatcher will capture token.");
   };
 
+  // Add click listener for Reconnect triggers anywhere in UI
+  document.addEventListener('click', (e) => {
+    if (e.target.id === 'reconnect-trigger' || e.target.closest('#reconnect-trigger')) {
+      console.log("[Auth] Reconnect trigger clicked - starting auth flow");
+      startAuthFlow();
+    }
+  });
+
   // Attach Listeners
   if (loginBtn) loginBtn.addEventListener('click', startAuthFlow);
   if (headerLoginBtn) headerLoginBtn.addEventListener('click', startAuthFlow);
@@ -1489,7 +1512,15 @@ function initLogin() {
       if (isPersistent) {
         console.log("[Auth] Persistent user detected on auth failure. Updating UI for manual reconnect.");
         const profileEmail = document.getElementById('user-email');
-        if (profileEmail) profileEmail.textContent = 'SESSION EXPIRED (RECONNECT)';
+        if (profileEmail) {
+          profileEmail.innerHTML = 'SESSION EXPIRED <span id="reconnect-trigger" style="text-decoration: underline; color: #ff9800; cursor: pointer; font-weight: bold;">(RECONNECT)</span>';
+
+          // Add click listener if not already handled by delegation
+          const trigger = document.getElementById('reconnect-trigger');
+          if (trigger) {
+            trigger.title = "Click to reconnect your Google account";
+          }
+        }
 
         // Keep UI in logged-in state to avoid "disconnected" flickers
         const loginRow = document.getElementById('login-row');
