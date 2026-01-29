@@ -1014,15 +1014,7 @@ async function refreshAuthToken() {
     console.log("[Google API] Silent refresh failed but user is persistent. User needs to manually reconnect to resume sync.");
     const profileEmail = document.getElementById('user-email');
     if (profileEmail) {
-      profileEmail.innerHTML = 'SESSION EXPIRED <span id="reconnect-trigger" style="text-decoration: underline; color: #ff9800; cursor: pointer; font-weight: bold; border-bottom: 2px solid #ff9800; padding-bottom: 2px; transition: all 0.2s ease;">(RECONNECT)</span>';
-
-      const trigger = document.getElementById('reconnect-trigger');
-      if (trigger) {
-        trigger.title = "Click to reconnect Google account and resume syncing";
-        // Ensure hover effect
-        trigger.onmouseover = () => trigger.style.color = '#fff';
-        trigger.onmouseout = () => trigger.style.color = '#ff9800';
-      }
+      profileEmail.textContent = 'SESSION EXPIRED (RECONNECT)';
     }
     return null;
   } else if (storage.isLoggedIn) {
@@ -1416,41 +1408,56 @@ function initLogin() {
       if (typeof syncWorkspace === 'function') {
         syncWorkspace(token);
       }
-
       return; // Exit flow on success
     } catch (error) {
-      console.warn("[Auth] Native chrome.identity failed, falling back to tab-based flow:", error);
-      // Continue to tab-based fallback
+      console.warn("[Auth] Native chrome.identity failed, trying WebAuthFlow fallback:", error);
+
+      try {
+        const clientId = "149193288904-fkjovpramlmte3958822t0cgmlgqr7lh.apps.googleusercontent.com";
+        const redirectUri = "https://dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org/";
+        const authUrl = new URL('https://accounts.google.com/o/oauth2/auth');
+        authUrl.searchParams.set('client_id', clientId);
+        authUrl.searchParams.set('response_type', 'token');
+        authUrl.searchParams.set('redirect_uri', redirectUri);
+        authUrl.searchParams.set('scope', scopes.join(' '));
+        authUrl.searchParams.set('prompt', 'select_account consent');
+
+        const responseUrl = await new Promise((resolve, reject) => {
+          chrome.identity.launchWebAuthFlow({
+            url: authUrl.toString(),
+            interactive: true
+          }, (url) => {
+            if (chrome.runtime.lastError || !url) {
+              reject(chrome.runtime.lastError?.message || "WebAuthFlow failed");
+            } else {
+              resolve(url);
+            }
+          });
+        });
+
+        const url = new URL(responseUrl);
+        const params = new URLSearchParams(url.hash.substring(1));
+        const webToken = params.get('access_token');
+
+        if (webToken) {
+          console.log("[Auth] WebAuthFlow success!");
+          await chrome.storage.local.set({
+            "google_access_token": webToken,
+            "isLoggedIn": true,
+            "google_user_persistent": true,
+            "google_auth_timestamp": Date.now()
+          });
+          showNotification("CONNECTED SUCCESSFULLY", "success");
+          if (typeof updateProfileInSettings === 'function') updateProfileInSettings(webToken);
+          if (typeof syncWorkspace === 'function') syncWorkspace(webToken);
+          return;
+        }
+      } catch (fallbackError) {
+        console.error("[Auth] All auth methods failed:", fallbackError);
+        showNotification(`LOGIN FAILED: ${fallbackError.message || fallbackError}`, "error");
+      }
     }
-
-    // --- STEP 2: FALLBACK TO TAB-BASED OAUTH (IF IDENTITY FAILS) ---
-    console.log("[Auth] Initiating Tab-based fallback flow...");
-
-    // Start token scavenger to capture token from auth tab
-    chrome.runtime.sendMessage({ type: 'START_TOKEN_SCAVENGER' }).catch(() => { });
-
-    const clientId = "149193288904-fkjovpramlmte3958822t0cgmlgqr7lh.apps.googleusercontent.com";
-    const redirectUri = "https://dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org/";
-    const authUrl = new URL('https://accounts.google.com/o/oauth2/auth');
-
-    authUrl.searchParams.set('client_id', clientId);
-    authUrl.searchParams.set('response_type', 'token');
-    authUrl.searchParams.set('redirect_uri', redirectUri);
-    authUrl.searchParams.set('scope', scopes.join(' '));
-    authUrl.searchParams.set('prompt', 'select_account consent');
-
-    // Open auth tab - token will be captured by background snatcher
-    chrome.tabs.create({ url: authUrl.toString() });
-    console.log("[Auth] Login tab opened (Fallback). Background snatcher will capture token.");
   };
-
-  // Add click listener for Reconnect triggers anywhere in UI
-  document.addEventListener('click', (e) => {
-    if (e.target.id === 'reconnect-trigger' || e.target.closest('#reconnect-trigger')) {
-      console.log("[Auth] Reconnect trigger clicked - starting auth flow");
-      startAuthFlow();
-    }
-  });
 
   // Attach Listeners
   if (loginBtn) loginBtn.addEventListener('click', startAuthFlow);
@@ -1512,15 +1519,7 @@ function initLogin() {
       if (isPersistent) {
         console.log("[Auth] Persistent user detected on auth failure. Updating UI for manual reconnect.");
         const profileEmail = document.getElementById('user-email');
-        if (profileEmail) {
-          profileEmail.innerHTML = 'SESSION EXPIRED <span id="reconnect-trigger" style="text-decoration: underline; color: #ff9800; cursor: pointer; font-weight: bold;">(RECONNECT)</span>';
-
-          // Add click listener if not already handled by delegation
-          const trigger = document.getElementById('reconnect-trigger');
-          if (trigger) {
-            trigger.title = "Click to reconnect your Google account";
-          }
-        }
+        if (profileEmail) profileEmail.textContent = 'SESSION EXPIRED (RECONNECT)';
 
         // Keep UI in logged-in state to avoid "disconnected" flickers
         const loginRow = document.getElementById('login-row');

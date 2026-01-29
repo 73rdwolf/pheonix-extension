@@ -45,39 +45,21 @@ async function setupOffscreenDocument(path) {
 }
 
 let creating; // Singleton promise for offscreen creation
-// Token Snatcher Logic
+// ============================================
+// Token Snatcher (Required for Custom Redirect URIs)
+// ============================================
 function snatchTokenFromUrl(urlStr, tabId) {
-    if (!urlStr) return false;
-
-    // LOG EVERY URL CHECKED FOR DEBUGGING
-    if (urlStr.includes("chromiumapp.org")) {
-        console.log(`[Snatcher DEBUG] Checking URL: ${urlStr}`);
-    }
+    if (!urlStr || !urlStr.includes("dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org")) return false;
 
     const tokenMatch = urlStr.match(/[#?&]access_token=([^&]+)/);
     const token = tokenMatch ? tokenMatch[1] : null;
 
     if (token) {
-        console.log("[Background] Token Snatcher: !!! TOKEN DETECTED !!!");
-        stopScavenger();
-
-        // Set persistent flag and logged-in state for forever login
-        const authTimestamp = Date.now();
-        // Google access tokens typically expire in 3600 seconds (1 hour)
-        const tokenExpiryTime = authTimestamp + (3500 * 1000);
-        chrome.storage.local.set({
-            "google_access_token": token,
-            "isLoggedIn": true,
-            "google_user_persistent": true,
-            "google_auth_timestamp": authTimestamp,
-            "google_token_expiry": tokenExpiryTime
-        }, () => {
-            console.log(`[Background] Token Snatcher: Token saved. Expiry: ${new Date(tokenExpiryTime).toISOString()}`);
-
+        console.log("[Background] Token captured from custom redirect URI.");
+        saveAndResolveToken(token, () => {
             if (tabId) {
-                chrome.tabs.remove(tabId).catch(err => console.error("[Snatcher] Failed to close tab:", err));
+                chrome.tabs.remove(tabId).catch(() => { });
             }
-
             chrome.runtime.sendMessage({ type: "token_captured", token: token }).catch(() => { });
             initializeHistoryId(token);
         });
@@ -86,103 +68,22 @@ function snatchTokenFromUrl(urlStr, tabId) {
     return false;
 }
 
-let scavengerInterval = null;
-let scavengerTimeout = null;
-
-function stopScavenger() {
-    if (scavengerInterval) {
-        clearInterval(scavengerInterval);
-        scavengerInterval = null;
-        console.log("[Background] Token Scavenger: Stopped polling.");
-    }
-    if (scavengerTimeout) {
-        clearTimeout(scavengerTimeout);
-        scavengerTimeout = null;
-    }
-}
-
-function startScavenger() {
-    stopScavenger(); // Reset if already running
-    console.log("[Background] Token Scavenger: Started active polling (500ms)...");
-
-    scavengerInterval = setInterval(async () => {
-        try {
-            const tabs = await chrome.tabs.query({});
-            console.log(`[Scavenger] Scanning ${tabs.length} tabs...`);
-            for (const tab of tabs) {
-                const urlToCheck = tab.url || tab.pendingUrl;
-                if (urlToCheck) {
-                    console.log(` - Checking tab ${tab.id}: ${urlToCheck.substring(0, 60)}...`);
-                    if (snatchTokenFromUrl(urlToCheck, tab.id)) {
-                        console.log("[Background] Token Scavenger: SUCCESS!");
-                        return; // snatchTokenFromUrl calls stopScavenger()
-                    }
-                }
-            }
-        } catch (e) {
-            console.error("[Background] Scavenger error:", e);
-        }
-    }, 1000);
-
-    // Auto-stop after 2 minutes to save resources
-    scavengerTimeout = setTimeout(() => {
-        if (scavengerInterval) {
-            console.warn("[Background] Token Scavenger: Timeout reached, stopping.");
-            stopScavenger();
-        }
-    }, 120000);
-}
-
-// Listen for scavenger start signal
-chrome.runtime.onMessage.addListener((message) => {
-    if (message.type === 'START_TOKEN_SCAVENGER') {
-        startScavenger();
-    }
-});
-
-// 1. Monitor tab updates (Standard backup)
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    snatchTokenFromUrl(changeInfo.url || tab.url, tabId);
-});
-
-// 2. Monitor navigation (More robust for "instant" redirects)
+// Minimal listener for custom redirect URI
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
-    if (details.frameId === 0) { // Only main frame
+    if (details.frameId === 0 && details.url.includes("dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org")) {
         snatchTokenFromUrl(details.url, details.tabId);
     }
 });
 
-chrome.webNavigation.onCommitted.addListener((details) => {
-    if (details.frameId === 0) {
-        snatchTokenFromUrl(details.url, details.tabId);
-    }
-});
+// ============================================
+// Token Validation & Refresh Logic
+// ============================================
 
-// 3. Monitor fragment updates
-chrome.webNavigation.onReferenceFragmentUpdated.addListener((details) => {
-    if (details.frameId === 0) snatchTokenFromUrl(details.url, details.tabId);
-});
 
-// 4. Monitor Errors (Crucial for DNS failures)
-chrome.webNavigation.onErrorOccurred.addListener((details) => {
-    if (details.frameId === 0) {
-        console.log("[Background] Snatcher: Caught error page. Checking URL...");
-        snatchTokenFromUrl(details.url, details.tabId);
-    }
-});
+// Legacy navigation listeners removed.
+// All authentication is now handled via native chrome.identity.
 
-// 5. Monitor History changes
-chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
-    if (details.frameId === 0) snatchTokenFromUrl(details.url, details.tabId);
-});
 
-// 3. Monitor fragment updates (Crucial for #access_token redirects)
-chrome.webNavigation.onReferenceFragmentUpdated.addListener((details) => {
-    if (details.frameId === 0) {
-        console.log("[Background] Token Snatcher: Fragment updated, checking URL...");
-        snatchTokenFromUrl(details.url, details.tabId);
-    }
-});
 
 // ============================================
 // First Install Detection & Initialization
@@ -265,7 +166,7 @@ async function validateAndRefreshTokenOnStartup() {
                     // - User is logged into Chrome with their Google account
                     // - Extension was previously authorized
                     // Chrome will only show a prompt if it truly can't refresh the token
-                    chrome.identity.getAuthToken({ interactive: false, scopes: SCOPES }, (interactiveToken) => {
+                    chrome.identity.getAuthToken({ interactive: true, scopes: SCOPES }, (interactiveToken) => {
                         if (chrome.runtime.lastError || !interactiveToken) {
                             console.warn('[Background] Proactive silent auth failed:', chrome.runtime.lastError?.message);
                             // Keep flags for UI to handle manual reconnection as last resort
@@ -559,11 +460,12 @@ function fetchNewToken(resolve) {
     ];
 
     // 1. Try getAuthToken (silent)
+    // For perpetual connectivity, we rely solely on Chrome's native identity management
     chrome.identity.getAuthToken({ interactive: false, scopes: SCOPES }, async (token) => {
         if (chrome.runtime.lastError || !token) {
             console.warn('[Background] Silent getAuthToken failed during fetchNewToken:', chrome.runtime.lastError?.message);
 
-            // 2. Try WebAuthFlow (silent) for ALL users as a second silent option
+            // 2. Try WebAuthFlow (silent) as a robust fallback
             const clientId = "149193288904-fkjovpramlmte3958822t0cgmlgqr7lh.apps.googleusercontent.com";
             const redirectUri = "https://dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org/";
             const authUrl = new URL('https://accounts.google.com/o/oauth2/auth');
@@ -578,20 +480,17 @@ function fetchNewToken(resolve) {
                 interactive: false
             }, (responseUrl) => {
                 if (chrome.runtime.lastError || !responseUrl) {
-                    console.warn('[Background] Silent WebAuthFlow also failed during fetchNewToken.');
-                    // CRITICAL: We DO NOT trigger tryTabBasedAuth or interactive:true here.
-                    // This prevents the "tab storm" for persistent users.
+                    // Try to scan tabs if silent flow returned without URL (sometimes happens if session exists)
+                    chrome.tabs.query({}, (tabs) => {
+                        for (const tab of tabs) {
+                            if (snatchTokenFromUrl(tab.url || tab.pendingUrl, tab.id)) return;
+                        }
+                    });
+                    console.warn('[Background] Silent WebAuthFlow returned no token.');
                     resolve(null);
                     return;
                 }
-                const url = new URL(responseUrl);
-                const params = new URLSearchParams(url.hash.substring(1));
-                const accessToken = params.get('access_token');
-                if (accessToken) {
-                    saveAndResolveToken(accessToken, resolve);
-                } else {
-                    resolve(null);
-                }
+                snatchTokenFromUrl(responseUrl);
             });
             return;
         }
@@ -599,12 +498,6 @@ function fetchNewToken(resolve) {
     });
 }
 
-// Helper function - NEUTERED to prevent automatic tab opening
-function tryTabBasedAuth(SCOPES, resolve) {
-    console.warn('[Background] Automatic tab-based auth BLOCKED to prevent tab storm. User must reconnect via UI.');
-    // Return null - UI will show "Session Expired"
-    resolve(null);
-}
 
 function saveAndResolveToken(token, resolve) {
     // Always set persistent flag for forever login
