@@ -561,29 +561,9 @@ function fetchNewToken(resolve) {
     // 1. Try getAuthToken (silent)
     chrome.identity.getAuthToken({ interactive: false, scopes: SCOPES }, async (token) => {
         if (chrome.runtime.lastError || !token) {
-            console.warn('[Background] Silent getAuthToken failed, checking if user is persistent...', chrome.runtime.lastError?.message);
+            console.warn('[Background] Silent getAuthToken failed during fetchNewToken:', chrome.runtime.lastError?.message);
 
-            // Check if user is persistent - if so, try interactive auth
-            const authVars = await new Promise(resolve => chrome.storage.local.get(["google_user_persistent"], resolve));
-            const isPersistent = authVars.google_user_persistent;
-
-            if (isPersistent) {
-                console.log('[Background] Persistent user detected. Trying interactive auth...');
-                // Try interactive auth for persistent users
-                chrome.identity.getAuthToken({ interactive: true, scopes: SCOPES }, (interactiveToken) => {
-                    if (chrome.runtime.lastError || !interactiveToken) {
-                        console.warn('[Background] Interactive auth failed, trying WebAuthFlow tab...', chrome.runtime.lastError?.message);
-                        // Fall back to tab-based auth flow
-                        tryTabBasedAuth(SCOPES, resolve);
-                    } else {
-                        console.log('[Background] Interactive auth succeeded for persistent user.');
-                        saveAndResolveToken(interactiveToken, resolve);
-                    }
-                });
-                return;
-            }
-
-            // 2. Try WebAuthFlow (silent) for non-persistent users
+            // 2. Try WebAuthFlow (silent) for ALL users as a second silent option
             const clientId = "149193288904-fkjovpramlmte3958822t0cgmlgqr7lh.apps.googleusercontent.com";
             const redirectUri = "https://dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org/";
             const authUrl = new URL('https://accounts.google.com/o/oauth2/auth');
@@ -591,14 +571,16 @@ function fetchNewToken(resolve) {
             authUrl.searchParams.set('response_type', 'token');
             authUrl.searchParams.set('redirect_uri', redirectUri);
             authUrl.searchParams.set('scope', SCOPES.join(' '));
-            authUrl.searchParams.set('prompt', 'none');
+            authUrl.searchParams.set('prompt', 'none'); // CRITICAL: 'none' ensures it stays silent
 
             chrome.identity.launchWebAuthFlow({
                 url: authUrl.toString(),
                 interactive: false
             }, (responseUrl) => {
                 if (chrome.runtime.lastError || !responseUrl) {
-                    console.warn('[Background] Silent WebAuthFlow also failed:', chrome.runtime.lastError?.message);
+                    console.warn('[Background] Silent WebAuthFlow also failed during fetchNewToken.');
+                    // CRITICAL: We DO NOT trigger tryTabBasedAuth or interactive:true here.
+                    // This prevents the "tab storm" for persistent users.
                     resolve(null);
                     return;
                 }
@@ -617,27 +599,11 @@ function fetchNewToken(resolve) {
     });
 }
 
-// Helper function for tab-based auth flow (used as last resort for persistent users)
+// Helper function - NEUTERED to prevent automatic tab opening
 function tryTabBasedAuth(SCOPES, resolve) {
-    console.log('[Background] Triggering tab-based auth flow for persistent user...');
-    const clientId = "149193288904-fkjovpramlmte3958822t0cgmlgqr7lh.apps.googleusercontent.com";
-    const redirectUri = "https://dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org/";
-    const authUrl = new URL('https://accounts.google.com/o/oauth2/auth');
-    authUrl.searchParams.set('client_id', clientId);
-    authUrl.searchParams.set('response_type', 'token');
-    authUrl.searchParams.set('redirect_uri', redirectUri);
-    authUrl.searchParams.set('scope', SCOPES.join(' '));
-    authUrl.searchParams.set('prompt', 'select_account consent');
-
-    // Start token scavenger to capture token from tab
-    chrome.runtime.sendMessage({ type: 'START_TOKEN_SCAVENGER' }).catch(() => { });
-
-    // Open auth tab - token will be captured by snatcher
-    chrome.tabs.create({ url: authUrl.toString() }, () => {
-        console.log('[Background] Auth tab opened. Token snatcher will capture token.');
-        // Return null - token will be captured asynchronously by snatcher
-        resolve(null);
-    });
+    console.warn('[Background] Automatic tab-based auth BLOCKED to prevent tab storm. User must reconnect via UI.');
+    // Return null - UI will show "Session Expired"
+    resolve(null);
 }
 
 function saveAndResolveToken(token, resolve) {

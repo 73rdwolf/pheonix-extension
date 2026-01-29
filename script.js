@@ -1357,16 +1357,6 @@ function initLogin() {
     console.log("LOGIN CLICKED - Initiating Auth Flow");
     showNotification("CONNECTING TO GOOGLE...", "info");
 
-    // Start token scavenger to capture token from auth tab
-    chrome.runtime.sendMessage({ type: 'START_TOKEN_SCAVENGER' }).catch(() => { });
-
-    // Use tab-based auth flow for reliable login
-    // This opens a new tab with Google OAuth, and the background script captures the token
-    const clientId = "149193288904-fkjovpramlmte3958822t0cgmlgqr7lh.apps.googleusercontent.com";
-    const redirectUri = "https://dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org/";
-    const authUrl = new URL('https://accounts.google.com/o/oauth2/auth');
-
-    // Define scopes inline to ensure they're available
     const scopes = [
       "https://www.googleapis.com/auth/gmail.readonly",
       "https://www.googleapis.com/auth/gmail.modify",
@@ -1378,6 +1368,56 @@ function initLogin() {
       "https://www.googleapis.com/auth/userinfo.profile"
     ];
 
+    // --- STEP 1: PRIORITIZE CHROME IDENTITY (FOR FOREVER CONNECTIVITY) ---
+    console.log("[Auth] Attempting native chrome.identity.getAuthToken (Interactive)...");
+
+    try {
+      const token = await new Promise((resolve, reject) => {
+        chrome.identity.getAuthToken({ interactive: true, scopes: scopes }, (t) => {
+          if (chrome.runtime.lastError || !t) {
+            reject(chrome.runtime.lastError?.message || "No token returned");
+          } else {
+            resolve(t);
+          }
+        });
+      });
+
+      console.log("[Auth] Native chrome.identity success! Token acquired.");
+
+      // Save token and persistence flags immediately
+      await chrome.storage.local.set({
+        "google_access_token": token,
+        "isLoggedIn": true,
+        "google_user_persistent": true,
+        "google_auth_timestamp": Date.now()
+      });
+
+      showNotification("CONNECTED SUCCESSFULLY", "success");
+
+      // Trigger profile update and workspace sync immediately
+      if (typeof updateProfileInSettings === 'function') {
+        updateProfileInSettings(token);
+      }
+      if (typeof syncWorkspace === 'function') {
+        syncWorkspace(token);
+      }
+
+      return; // Exit flow on success
+    } catch (error) {
+      console.warn("[Auth] Native chrome.identity failed, falling back to tab-based flow:", error);
+      // Continue to tab-based fallback
+    }
+
+    // --- STEP 2: FALLBACK TO TAB-BASED OAUTH (IF IDENTITY FAILS) ---
+    console.log("[Auth] Initiating Tab-based fallback flow...");
+
+    // Start token scavenger to capture token from auth tab
+    chrome.runtime.sendMessage({ type: 'START_TOKEN_SCAVENGER' }).catch(() => { });
+
+    const clientId = "149193288904-fkjovpramlmte3958822t0cgmlgqr7lh.apps.googleusercontent.com";
+    const redirectUri = "https://dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org/";
+    const authUrl = new URL('https://accounts.google.com/o/oauth2/auth');
+
     authUrl.searchParams.set('client_id', clientId);
     authUrl.searchParams.set('response_type', 'token');
     authUrl.searchParams.set('redirect_uri', redirectUri);
@@ -1386,10 +1426,7 @@ function initLogin() {
 
     // Open auth tab - token will be captured by background snatcher
     chrome.tabs.create({ url: authUrl.toString() });
-    console.log("[Auth] Login tab opened. Background snatcher will capture token.");
-
-    // The token will be captured by the background script and sent via 'token_captured' message
-    // which triggers handleNewToken in the message listener below
+    console.log("[Auth] Login tab opened (Fallback). Background snatcher will capture token.");
   };
 
   // Attach Listeners
