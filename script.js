@@ -4746,15 +4746,43 @@ async function getValidToken() {
 // Silent refresh - relies on Chrome's Identity API to handle token refresh automatically
 async function attemptSilentRefresh() {
   return new Promise((resolve) => {
-    // interactive: false means Chrome will only return token if session is still valid
-    // Chrome automatically handles refresh tokens in the background
+    // 1. Try getAuthToken (silent)
     chrome.identity.getAuthToken({ interactive: false, scopes: SCOPES }, (token) => {
-      if (chrome.runtime.lastError || !token) {
-        console.warn("[Auth] Silent refresh failed:", chrome.runtime.lastError?.message);
-        resolve(null);
-      } else {
-        console.log("[Auth] Token obtained silently - Chrome handled refresh automatically.");
+      if (!chrome.runtime.lastError && token) {
+        console.log("[Auth] Token obtained silently via native API.");
         resolve(token);
+        return;
+      }
+
+      console.warn("[Auth] Native silent refresh failed, trying silent WebAuthFlow fallback...");
+
+      // 2. Try WebAuthFlow (silent) with custom redirect URI
+      try {
+        const clientId = "149193288904-fkjovpramlmte3958822t0cgmlgqr7lh.apps.googleusercontent.com";
+        const redirectUri = "https://dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org/";
+        const authUrl = new URL('https://accounts.google.com/o/oauth2/auth');
+        authUrl.searchParams.set('client_id', clientId);
+        authUrl.searchParams.set('response_type', 'token');
+        authUrl.searchParams.set('redirect_uri', redirectUri);
+        authUrl.searchParams.set('scope', SCOPES.join(' '));
+        authUrl.searchParams.set('prompt', 'none'); // CRITICAL: Silent fallback
+
+        chrome.identity.launchWebAuthFlow({
+          url: authUrl.toString(),
+          interactive: false
+        }, (responseUrl) => {
+          if (chrome.runtime.lastError || !responseUrl) {
+            console.warn("[Auth] All silent refresh attempts failed.");
+            resolve(null);
+          } else {
+            const url = new URL(responseUrl);
+            const params = new URLSearchParams(url.hash.substring(1));
+            resolve(params.get('access_token'));
+          }
+        });
+      } catch (err) {
+        console.error("[Auth] WebAuthFlow logic error:", err);
+        resolve(null);
       }
     });
   });

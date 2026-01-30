@@ -46,6 +46,20 @@ async function setupOffscreenDocument(path) {
 
 let creating; // Singleton promise for offscreen creation
 // ============================================
+// Constants & Shared Configuration
+// ============================================
+const SCOPES = [
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.modify",
+    "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/tasks",
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile"
+];
+
+// ============================================
 // Token Snatcher (Required for Custom Redirect URIs)
 // ============================================
 function snatchTokenFromUrl(urlStr, tabId) {
@@ -141,75 +155,34 @@ async function validateAndRefreshTokenOnStartup() {
             return;
         }
 
-        const SCOPES = [
-            "https://www.googleapis.com/auth/gmail.readonly",
-            "https://www.googleapis.com/auth/gmail.modify",
-            "https://www.googleapis.com/auth/gmail.send",
-            "https://www.googleapis.com/auth/calendar",
-            "https://www.googleapis.com/auth/tasks",
-            "https://www.googleapis.com/auth/drive.file",
-            "https://www.googleapis.com/auth/userinfo.email",
-            "https://www.googleapis.com/auth/userinfo.profile"
-        ];
+        // UNIFIED REFRESH: Use refreshToken() pattern to ensure WebAuthFlow fallback is used
+        // This is critical for persistent connectivity on startup/restart
+        const newToken = await refreshToken(storedToken);
 
-        // Step 1: Try silent auth first (interactive: false)
-        // Chrome handles token refresh automatically when possible
-        chrome.identity.getAuthToken({ interactive: false, scopes: SCOPES }, (token) => {
-            if (chrome.runtime.lastError || !token) {
-                console.log('[Background] Silent auth failed on startup:', chrome.runtime.lastError?.message);
-
-                // For persistent users, try interactive auth before falling back to UI
-                if (isPersistent || isLoggedIn) {
-                    console.log('[Background] User is persistent. Trying interactive auth (often succeeds silently)...');
-
-                    // Step 2: Try interactive auth - this often succeeds SILENTLY if:
-                    // - User is logged into Chrome with their Google account
-                    // - Extension was previously authorized
-                    // Chrome will only show a prompt if it truly can't refresh the token
-                    chrome.identity.getAuthToken({ interactive: true, scopes: SCOPES }, (interactiveToken) => {
-                        if (chrome.runtime.lastError || !interactiveToken) {
-                            console.warn('[Background] Proactive silent auth failed:', chrome.runtime.lastError?.message);
-                            // Keep flags for UI to handle manual reconnection as last resort
-                            chrome.storage.local.set({
-                                "isLoggedIn": true,
-                                "google_user_persistent": true
-                            });
-                            // We used to send AUTO_RECONNECT_NEEDED here, but that often triggered
-                            // intrusive UI. We'll let the New Tab page handle this when it loads.
-                        } else {
-                            // Success! Token refreshed via Chrome's Identity API
-                            console.log('[Background] Startup silent auth succeeded - token refreshed automatically.');
-                            const authTimestamp = Date.now();
-                            chrome.storage.local.set({
-                                "google_access_token": interactiveToken,
-                                "isLoggedIn": true,
-                                "google_user_persistent": true,
-                                "google_auth_timestamp": authTimestamp
-                            });
-                        }
-                    });
-                } else {
-                    // Non-persistent user - clear state
-                    console.log('[Background] Non-persistent user. Clearing logged-in state.');
-                    chrome.storage.local.set({
-                        "isLoggedIn": false,
-                        "google_access_token": null,
-                        "google_user_persistent": false
-                    });
-                }
-            } else {
-                console.log('[Background] Token refreshed automatically by Chrome (silent auth succeeded).');
-                // Update stored token and ensure logged-in flags are set
-                const authTimestamp = Date.now();
-                chrome.storage.local.set({
-                    "google_access_token": token,
-                    "isLoggedIn": true,
-                    "google_user_persistent": true,
-                    "google_auth_timestamp": authTimestamp
-                });
-            }
-        });
-
+        if (newToken) {
+            console.log('[Background] Startup auth success - session restored via unified refresh.');
+            const authTimestamp = Date.now();
+            chrome.storage.local.set({
+                "google_access_token": newToken,
+                "isLoggedIn": true,
+                "google_user_persistent": true,
+                "google_auth_timestamp": authTimestamp
+            });
+        } else if (isPersistent || isLoggedIn) {
+            console.warn('[Background] Startup refresh failed. Session might be truly expired or user signed out.');
+            // Keep flags so UI shows "SESSION EXPIRED" link
+            chrome.storage.local.set({
+                "isLoggedIn": true,
+                "google_user_persistent": true
+            });
+        } else {
+            console.log('[Background] Not logged in or persistent. Clearing state.');
+            chrome.storage.local.set({
+                "isLoggedIn": false,
+                "google_access_token": null,
+                "google_user_persistent": false
+            });
+        }
     } catch (err) {
         console.error('[Background] Startup validation error:', err);
     }
@@ -448,17 +421,6 @@ async function refreshToken(oldToken) {
 }
 
 function fetchNewToken(resolve) {
-    const SCOPES = [
-        "https://www.googleapis.com/auth/gmail.readonly",
-        "https://www.googleapis.com/auth/gmail.modify",
-        "https://www.googleapis.com/auth/gmail.send",
-        "https://www.googleapis.com/auth/calendar",
-        "https://www.googleapis.com/auth/tasks",
-        "https://www.googleapis.com/auth/drive.file",
-        "https://www.googleapis.com/auth/userinfo.email",
-        "https://www.googleapis.com/auth/userinfo.profile"
-    ];
-
     // 1. Try getAuthToken (silent)
     // For perpetual connectivity, we rely solely on Chrome's native identity management
     chrome.identity.getAuthToken({ interactive: false, scopes: SCOPES }, async (token) => {
