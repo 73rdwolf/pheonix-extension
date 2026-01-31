@@ -29,18 +29,31 @@ async function hasOffscreenDocument(path) {
 }
 
 async function setupOffscreenDocument(path) {
-    if (!(await hasOffscreenDocument(path))) {
-        if (creating) {
-            await creating;
-        } else {
-            creating = chrome.offscreen.createDocument({
-                url: path,
-                reasons: ['AUDIO_PLAYBACK'],
-                justification: 'Notification sound playback',
-            });
-            await creating;
-            creating = null;
+    // If we're already creating one, wait for it
+    if (creating) {
+        await creating;
+    }
+
+    // Check if it already exists
+    if (await hasOffscreenDocument(path)) {
+        return;
+    }
+
+    // Create a new one
+    try {
+        creating = chrome.offscreen.createDocument({
+            url: path,
+            reasons: ['AUDIO_PLAYBACK'],
+            justification: 'Notification sound playback',
+        });
+        await creating;
+    } catch (e) {
+        // Ignore "Only a single offscreen document" errors as they mean we succeeded in spirit
+        if (!e.message.includes('Only a single offscreen document')) {
+            console.error('[Background] Failed to create offscreen document:', e);
         }
+    } finally {
+        creating = null;
     }
 }
 
@@ -60,32 +73,167 @@ const SCOPES = [
 ];
 
 // ============================================
-// Token Snatcher (Required for Custom Redirect URIs)
+// Cloudflare Worker Configuration (Forever Login)
 // ============================================
-function snatchTokenFromUrl(urlStr, tabId) {
-    if (!urlStr || !urlStr.includes("dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org")) return false;
+const WORKER_URL = "https://pheonix-auth.pixelarenaltd.workers.dev";
+const NEW_CLIENT_ID = "635413045241-bh93ib54pa4pd15fj9042qsij99290sp.apps.googleusercontent.com"; // Web App Client ID for manual capture compatibility
 
-    const tokenMatch = urlStr.match(/[#?&]access_token=([^&]+)/);
-    const token = tokenMatch ? tokenMatch[1] : null;
+// Exchange authorization code for tokens via Cloudflare Worker
+async function exchangeCodeForTokens(code, userEmail, redirectUri) {
+    try {
+        const body = { code, email: userEmail };
+        if (redirectUri) body.redirect_uri = redirectUri;
 
-    if (token) {
-        console.log("[Background] Token captured from custom redirect URI.");
-        saveAndResolveToken(token, () => {
-            if (tabId) {
-                chrome.tabs.remove(tabId).catch(() => { });
-            }
-            chrome.runtime.sendMessage({ type: "token_captured", token: token }).catch(() => { });
-            initializeHistoryId(token);
+        const response = await fetch(`${WORKER_URL}/exchange`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
         });
-        return true;
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('[Background] Token exchange failed:', error);
+            return null;
+        }
+
+        const data = await response.json();
+        console.log('[Background] Token exchanged successfully via Worker');
+        return data.access_token;
+    } catch (e) {
+        console.error('[Background] Worker exchange error:', e);
+        return null;
     }
-    return false;
+}
+
+// Refresh token via Cloudflare Worker (uses stored refresh token)
+async function refreshTokenViaWorker(userEmail) {
+    if (!userEmail) {
+        const storage = await chrome.storage.local.get(["google_user_email", "last_known_email"]);
+        userEmail = storage.google_user_email || storage.last_known_email;
+    }
+
+    if (!userEmail) {
+        console.log('[Background] No user email for Worker refresh');
+        return null;
+    }
+
+    try {
+        const response = await fetch(`${WORKER_URL}/refresh`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: userEmail })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.warn('[Background] Worker refresh failed:', JSON.stringify(error));
+            return null;
+        }
+
+        const data = await response.json();
+        console.log('[Background] Token refreshed successfully via Worker');
+        return data.access_token;
+    } catch (e) {
+        console.error('[Background] Worker refresh error:', e);
+        return null;
+    }
+}
+
+// Start OAuth flow with authorization code (for Worker-based token storage)
+async function startWorkerAuthFlow(interactive = true) {
+    const clientId = "635413045241-bh93ib54pa4pd15fj9042qsij99290sp.apps.googleusercontent.com";
+    // HARDCODED: Console likely has the slash. Adding it back.
+    const redirectUri = "https://ipmclbopdijpfhlknjhjnijddafggicg.chromiumapp.org/";
+
+    console.log('[Background] Starting Worker Auth Flow with URI:', redirectUri);
+
+    const authUrl = new URL('https://accounts.google.com/o/oauth2/auth');
+    authUrl.searchParams.set('client_id', clientId);
+    authUrl.searchParams.set('response_type', 'code'); // Code flow for refresh tokens!
+    authUrl.searchParams.set('redirect_uri', redirectUri);
+    authUrl.searchParams.set('scope', SCOPES.join(' '));
+    authUrl.searchParams.set('access_type', 'offline'); // CRITICAL: Get refresh token
+    authUrl.searchParams.set('prompt', interactive ? 'select_account consent' : 'none');
+
+    chrome.tabs.create({ url: authUrl.toString() });
+    // The token will be snatched by the webNavigation listener
+    // This function no longer directly resolves with a token.
+    // Callers should listen for 'token_captured' message or check storage.
+    return Promise.resolve(null); // Indicate that the flow has been initiated.
+}
+
+// Token/Code Snatcher (Required for Custom Redirect URIs)
+let lastCapturedCode = null;
+async function snatchTokenFromUrl(urlStr, tabId) {
+    if (!urlStr || !urlStr.includes("ipmclbopdijpfhlknjhjnijddafggicg.chromiumapp.org")) return null;
+
+    try {
+        const url = new URL(urlStr.replace('#', '?'));
+        const code = url.searchParams.get('code');
+
+        if (code) {
+            console.log("[Background] Auth code captured! Exchanging...");
+            const redirectUri = "https://ipmclbopdijpfhlknjhjnijddafggicg.chromiumapp.org/";
+
+            const token = await exchangeCodeForTokens(code, "temp@pending.local", redirectUri);
+            if (token) {
+                console.log("[Background] Token obtained successfully after capture.");
+
+                // Get user info to update email mapping and save google_user_email
+                try {
+                    const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (profileRes.ok) {
+                        const profile = await profileRes.json();
+                        console.log("[Background] Profile captured:", profile.email);
+
+                        await chrome.storage.local.set({ "google_user_email": profile.email });
+
+                        // Update worker mapping
+                        await fetch(`${WORKER_URL}/update-email`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                old_email: 'temp@pending.local',
+                                new_email: profile.email
+                            })
+                        });
+                    }
+                } catch (pe) { console.warn("[Background] Profile fetch after snatch failed:", pe); }
+
+                saveAndResolveToken(token, () => {
+                    if (tabId) chrome.tabs.remove(tabId).catch(() => { });
+                    chrome.runtime.sendMessage({ type: "token_captured", token: token }).catch(() => { });
+                    initializeHistoryId(token);
+                });
+                return token;
+            }
+        }
+    } catch (err) {
+        console.error('[Background] Code exchange error:', err);
+    }
+    return null;
 }
 
 // Minimal listener for custom redirect URI
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
-    if (details.frameId === 0 && details.url.includes("dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org")) {
-        snatchTokenFromUrl(details.url, details.tabId);
+    // Check for BOTH local ID (just in case) and the Hardcoded Store ID
+    if (details.frameId === 0) {
+        if (details.url.includes(chrome.runtime.id) || details.url.includes("ipmclbopdijpfhlknjhjnijddafggicg")) {
+            snatchTokenFromUrl(details.url, details.tabId);
+        }
+    }
+});
+
+// ROBUST FALLBACK: tabs.onUpdated
+// Sometimes onBeforeNavigate doesn't fire for NXDOMAIN or acts fast. 
+// onUpdated sees the URL change in the address bar.
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.url) {
+        if (changeInfo.url.includes("ipmclbopdijpfhlknjhjnijddafggicg") || changeInfo.url.includes(chrome.runtime.id)) {
+            snatchTokenFromUrl(changeInfo.url, tabId);
+        }
     }
 });
 
@@ -144,10 +292,11 @@ async function validateAndRefreshTokenOnStartup() {
     console.log('[Background] Verifying Google auth on startup...');
     try {
         // Check if user is logged in OR has a stored token
-        const storage = await chrome.storage.local.get(["isLoggedIn", "google_access_token", "google_user_persistent"]);
+        const storage = await chrome.storage.local.get(["isLoggedIn", "google_access_token", "google_user_persistent", "google_user_email", "last_known_email"]);
         const isLoggedIn = storage.isLoggedIn;
         const storedToken = storage.google_access_token;
         const isPersistent = storage.google_user_persistent;
+        const userEmail = storage.google_user_email || storage.last_known_email;
 
         // If user has token or is marked as logged in, verify/refresh
         if (!storedToken && !isLoggedIn && !isPersistent) {
@@ -155,12 +304,32 @@ async function validateAndRefreshTokenOnStartup() {
             return;
         }
 
-        // UNIFIED REFRESH: Use refreshToken() pattern to ensure WebAuthFlow fallback is used
-        // This is critical for persistent connectivity on startup/restart
+        // PRIORITY 1: Try Worker-based refresh (uses stored refresh token)
+        // This is the most reliable method for persistent login
+        if (userEmail) {
+            console.log(`[Background] Attempting Worker-based token refresh for ${userEmail}...`);
+            const workerToken = await refreshTokenViaWorker(userEmail);
+
+            if (workerToken) {
+                console.log('[Background] Startup auth success via Cloudflare Worker!');
+                const authTimestamp = Date.now();
+                await chrome.storage.local.set({
+                    "google_access_token": workerToken,
+                    "isLoggedIn": true,
+                    "google_user_persistent": true,
+                    "google_auth_timestamp": authTimestamp,
+                    "google_token_expiry": authTimestamp + (3500 * 1000)
+                });
+                return;
+            }
+            console.log('[Background] Worker refresh failed, trying fallback methods...');
+        }
+
+        // PRIORITY 2: Fall back to legacy refresh methods
         const newToken = await refreshToken(storedToken);
 
         if (newToken) {
-            console.log('[Background] Startup auth success - session restored via unified refresh.');
+            console.log('[Background] Startup auth success - session restored via legacy refresh.');
             const authTimestamp = Date.now();
             chrome.storage.local.set({
                 "google_access_token": newToken,
@@ -168,15 +337,15 @@ async function validateAndRefreshTokenOnStartup() {
                 "google_user_persistent": true,
                 "google_auth_timestamp": authTimestamp
             });
-        } else if (isPersistent || isLoggedIn) {
-            console.warn('[Background] Startup refresh failed. Session might be truly expired or user signed out.');
+        } else if (isPersistent || isLoggedIn || userEmail) {
+            console.warn('[Background] Startup refresh failed. Keeping persistent flags for reconnect UI.');
             // Keep flags so UI shows "SESSION EXPIRED" link
             chrome.storage.local.set({
                 "isLoggedIn": true,
                 "google_user_persistent": true
             });
         } else {
-            console.log('[Background] Not logged in or persistent. Clearing state.');
+            console.log('[Background] Not logged in and no email. Clearing state.');
             chrome.storage.local.set({
                 "isLoggedIn": false,
                 "google_access_token": null,
@@ -302,6 +471,64 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
+    // ============================================
+    // Worker-based Auth Handlers (Forever Login)
+    // ============================================
+
+    // Start Auth flow (Using tabs.create for maximum reliability and visibility)
+    if (message.type === 'START_WORKER_AUTH') {
+        (async () => {
+            try {
+                const clientId = "635413045241-bh93ib54pa4pd15fj9042qsij99290sp.apps.googleusercontent.com";
+                // HARDCODED URI WITH SLASH
+                const redirectUri = "https://ipmclbopdijpfhlknjhjnijddafggicg.chromiumapp.org/";
+
+                console.log('[Background] Initiating Auth Tab with URI:', redirectUri);
+
+                const authUrl = new URL('https://accounts.google.com/o/oauth2/auth');
+                authUrl.searchParams.set('client_id', clientId);
+                authUrl.searchParams.set('response_type', 'code');
+                authUrl.searchParams.set('redirect_uri', redirectUri);
+                authUrl.searchParams.set('scope', SCOPES.join(' '));
+                authUrl.searchParams.set('access_type', 'offline');
+                authUrl.searchParams.set('prompt', 'select_account consent');
+
+                chrome.tabs.create({ url: authUrl.toString() });
+                sendResponse({ success: true, message: 'Auth tab opened' });
+            } catch (err) {
+                console.error('[Background] Auth error:', err);
+                sendResponse({ success: false, error: err.message || err });
+            }
+        })();
+        return true;
+    }
+
+    // Refresh token via Worker
+    if (message.type === 'REFRESH_VIA_WORKER') {
+        (async () => {
+            try {
+                const storage = await chrome.storage.local.get(["google_user_email", "last_known_email"]);
+                const userEmail = storage.google_user_email || storage.last_known_email;
+                const token = await refreshTokenViaWorker(userEmail);
+                if (token) {
+                    await chrome.storage.local.set({
+                        "google_access_token": token,
+                        "isLoggedIn": true,
+                        "google_user_persistent": true,
+                        "google_auth_timestamp": Date.now(),
+                        "google_token_expiry": Date.now() + (3500 * 1000)
+                    });
+                    sendResponse({ success: true, token });
+                } else {
+                    sendResponse({ success: false, error: 'Worker refresh failed' });
+                }
+            } catch (err) {
+                sendResponse({ success: false, error: err.message });
+            }
+        })();
+        return true;
+    }
+
     return true;
 });
 
@@ -396,8 +623,25 @@ async function getValidToken(forceRefresh = false) {
 }
 
 async function refreshToken(oldToken) {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
         try {
+            // PRIORITY 1: Try Worker-based refresh if we have a user email
+            // This is the most stable and bypasses "bad client id" issues in many cases
+            const storage = await chrome.storage.local.get(["google_user_email", "last_known_email"]);
+            const userEmail = storage.google_user_email || storage.last_known_email;
+
+            if (userEmail) {
+                console.log(`[Background] Attempting Worker-based refresh for ${userEmail} in refreshToken...`);
+                const workerToken = await refreshTokenViaWorker(userEmail);
+                if (workerToken) {
+                    console.log('[Background] Refresh succeeded via Cloudflare Worker');
+                    saveAndResolveToken(workerToken, resolve);
+                    return;
+                }
+                console.warn('[Background] Worker-based refresh failed, falling back to native...');
+            }
+
+            // PRIORITY 2: Fallback to native Chrome identity management
             // First, remove the invalid token from cache if provided
             if (oldToken) {
                 console.log('[Background] Removing stale token from cache');
@@ -414,46 +658,17 @@ async function refreshToken(oldToken) {
             }
         } catch (e) {
             console.error('[Background] Token refresh error:', e);
-            // Don't resolve null - let caller decide what to do with old token
             resolve(null);
         }
     });
 }
 
 function fetchNewToken(resolve) {
-    // 1. Try getAuthToken (silent)
     // For perpetual connectivity, we rely solely on Chrome's native identity management
     chrome.identity.getAuthToken({ interactive: false, scopes: SCOPES }, async (token) => {
         if (chrome.runtime.lastError || !token) {
             console.warn('[Background] Silent getAuthToken failed during fetchNewToken:', chrome.runtime.lastError?.message);
-
-            // 2. Try WebAuthFlow (silent) as a robust fallback
-            const clientId = "149193288904-fkjovpramlmte3958822t0cgmlgqr7lh.apps.googleusercontent.com";
-            const redirectUri = "https://dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org/";
-            const authUrl = new URL('https://accounts.google.com/o/oauth2/auth');
-            authUrl.searchParams.set('client_id', clientId);
-            authUrl.searchParams.set('response_type', 'token');
-            authUrl.searchParams.set('redirect_uri', redirectUri);
-            authUrl.searchParams.set('scope', SCOPES.join(' '));
-            authUrl.searchParams.set('prompt', 'none'); // CRITICAL: 'none' ensures it stays silent
-
-            chrome.identity.launchWebAuthFlow({
-                url: authUrl.toString(),
-                interactive: false
-            }, (responseUrl) => {
-                if (chrome.runtime.lastError || !responseUrl) {
-                    // Try to scan tabs if silent flow returned without URL (sometimes happens if session exists)
-                    chrome.tabs.query({}, (tabs) => {
-                        for (const tab of tabs) {
-                            if (snatchTokenFromUrl(tab.url || tab.pendingUrl, tab.id)) return;
-                        }
-                    });
-                    console.warn('[Background] Silent WebAuthFlow returned no token.');
-                    resolve(null);
-                    return;
-                }
-                snatchTokenFromUrl(responseUrl);
-            });
+            resolve(null);
             return;
         }
         saveAndResolveToken(token, resolve);
@@ -469,12 +684,16 @@ function saveAndResolveToken(token, resolve) {
     const tokenExpiryTime = authTimestamp + (3500 * 1000);
     chrome.storage.local.set({
         "google_access_token": token,
+        "isLoggedIn": true, // CRITICAL: Set login flag for checkAuthStatus detection
         "google_user_persistent": true,
         "google_auth_timestamp": authTimestamp,
         "google_token_expiry": tokenExpiryTime
     }, () => {
-        console.log(`[Background] Token refreshed successfully. Expiry: ${new Date(tokenExpiryTime).toISOString()}`);
-        resolve(token);
+        console.log(`[Background] ✅ Token saved successfully. Expiry: ${new Date(tokenExpiryTime).toISOString()}`);
+        console.log(`[Background] isLoggedIn flag set to true`);
+        if (typeof resolve === 'function') {
+            resolve(token);
+        }
     });
 }
 
@@ -495,7 +714,8 @@ async function ensureToken() {
     const storage = await chrome.storage.local.get([
         "google_access_token",
         "google_token_expiry",
-        "google_user_persistent"
+        "google_user_persistent",
+        "google_user_email"
     ]);
 
     if (!storage.google_access_token) {
@@ -506,9 +726,25 @@ async function ensureToken() {
     // If token expires within 5 minutes, refresh proactively
     if (isExpired(storage.google_token_expiry)) {
         console.log('[Auth] Token expiring soon, refreshing proactively (ensureToken)...');
+
+        // PRIORITY 1: Try Worker refresh (most reliable)
+        if (storage.google_user_email) {
+            const workerToken = await refreshTokenViaWorker(storage.google_user_email);
+            if (workerToken) {
+                console.log('[Auth] Token refreshed via Worker in ensureToken');
+                await chrome.storage.local.set({
+                    "google_access_token": workerToken,
+                    "google_auth_timestamp": Date.now(),
+                    "google_token_expiry": Date.now() + (3500 * 1000)
+                });
+                return workerToken;
+            }
+        }
+
+        // PRIORITY 2: Fall back to legacy refresh
         const newToken = await refreshToken(storage.google_access_token);
         if (newToken) {
-            console.log('[Auth] Token refreshed successfully via ensureToken');
+            console.log('[Auth] Token refreshed successfully via legacy ensureToken');
             return newToken;
         }
         // If refresh fails, return old token (might still work briefly)
@@ -550,7 +786,8 @@ async function proactiveTokenRefresh() {
         const storage = await chrome.storage.local.get([
             "google_access_token",
             "google_token_expiry",
-            "google_user_persistent"
+            "google_user_persistent",
+            "google_user_email"
         ]);
 
         if (!storage.google_access_token || !storage.google_user_persistent) {
@@ -564,9 +801,25 @@ async function proactiveTokenRefresh() {
         // If token expires within 5 minutes, refresh proactively
         if (timeUntilExpiry < 5 * 60 * 1000) {
             console.log(`[Background] Token expiring in ${Math.round(timeUntilExpiry / 1000)}s, proactive refresh...`);
+
+            // PRIORITY 1: Try Worker refresh first
+            if (storage.google_user_email) {
+                const workerToken = await refreshTokenViaWorker(storage.google_user_email);
+                if (workerToken) {
+                    console.log('[Background] Proactive refresh via Worker succeeded.');
+                    await chrome.storage.local.set({
+                        "google_access_token": workerToken,
+                        "google_auth_timestamp": Date.now(),
+                        "google_token_expiry": Date.now() + (3500 * 1000)
+                    });
+                    return workerToken;
+                }
+            }
+
+            // PRIORITY 2: Fall back to legacy refresh
             const newToken = await refreshToken(storage.google_access_token);
             if (newToken) {
-                console.log('[Background] Proactive token refresh succeeded.');
+                console.log('[Background] Proactive token refresh via legacy succeeded.');
                 return newToken;
             } else {
                 console.warn('[Background] Proactive refresh failed, will retry on next alarm.');

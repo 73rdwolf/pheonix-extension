@@ -34,7 +34,8 @@ async function cachedFetch(url, options = {}, cacheKey = null, ttl = CACHE_TTL) 
   // Check if request is already pending
   if (pendingRequests.has(key)) {
     console.log(`[Performance] Deduplicating request: ${key}`);
-    return pendingRequests.get(key);
+    const response = await pendingRequests.get(key);
+    return response.clone();
   }
 
   // Make request and cache it
@@ -42,9 +43,8 @@ async function cachedFetch(url, options = {}, cacheKey = null, ttl = CACHE_TTL) 
     .then(async (response) => {
       // Only cache successful responses
       if (response.ok) {
-        const clonedResponse = response.clone();
         requestCache.set(key, {
-          response: clonedResponse,
+          response: response.clone(),
           timestamp: now
         });
       }
@@ -57,7 +57,7 @@ async function cachedFetch(url, options = {}, cacheKey = null, ttl = CACHE_TTL) 
     });
 
   pendingRequests.set(key, requestPromise);
-  return requestPromise;
+  return requestPromise.then(res => res.clone());
 }
 
 /**

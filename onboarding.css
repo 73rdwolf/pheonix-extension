@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap');
 /* =====================================================
    ESSENTIALS ONBOARDING - 2026 PREMIUM EXPERIENCE
    Glassmorphism + Soft Neumorphism + Micro-interactions
@@ -1856,7 +1857,7 @@ body:not(.light-theme) .ob-dashboard-preview.ob-live {
 }
 
 /* Ensure font is available or fallback gracefully */
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap');
+/* Font moved to top */
 
 /* ─────────────────────────────────────────────────────
    18. REFINED VISUALS & MOCKUPS

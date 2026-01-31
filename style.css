@@ -867,13 +867,16 @@ body:not(.light-theme) ::-webkit-scrollbar-thumb:hover {
   left: 40px;
   width: 380px;
   max-width: calc(100vw - 80px);
-  height: auto;
-  min-height: 450px;
-  max-height: 92vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  overflow-y: auto !important;
+  height: auto !important;
+  /* Force auto-height */
+  min-height: 80px !important;
+  max-height: calc(100vh - 80px) !important;
+  /* Force max-height to viewport limit */
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  bottom: auto !important;
+  /* Enable scroll if content exceeds max-height */
   scrollbar-width: none;
   /* Firefox */
   padding: 25px;
@@ -926,10 +929,23 @@ body:not(.light-theme) ::-webkit-scrollbar-thumb:hover {
   user-select: none;
 }
 
+
+
+
+#task-list {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100%;
+  height: auto !important;
+  min-height: 0 !important;
+  flex-shrink: 0;
+  /* Prevent list from shrinking if parent tries to squeeze it */
+}
+
 /* Base module-content styles for tasks-module */
 #tasks-module .module-content {
   flex: 1 1 auto;
-  min-height: 350px;
+  min-height: 0;
   /* Crucial for flex scrolling */
   overflow-y: auto;
   overflow-x: hidden;
@@ -940,30 +956,7 @@ body:not(.light-theme) ::-webkit-scrollbar-thumb:hover {
   contain: layout style;
 }
 
-/* When completed section is expanded, force module to grow tall */
-#tasks-module.expanded,
-#tasks-module:has(.completed-tasks-list.visible) {
-  /* Keep top positioning, don't use bottom */
-  max-height: 98vh;
-  /* Allow module to grow to nearly full viewport height */
-  height: auto;
-  overflow-y: auto !important;
-  /* Keep scrolling but allow growth */
-}
 
-/* When completed section is visible, allow module-content to expand */
-#tasks-module.expanded .module-content,
-#tasks-module:has(.completed-tasks-list.visible) .module-content {
-  /* Remove flex constraints to allow natural growth */
-  flex: 1 1 auto;
-  min-height: fit-content;
-  height: auto;
-  /* Allow content to determine height */
-  contain: none !important;
-  /* Remove layout containment to allow expansion */
-  overflow-y: visible !important;
-  /* Allow completed section to expand beyond normal bounds */
-}
 
 /* Hide scrollbar for Webkit browsers (Chrome, Safari, Edge) */
 #tasks-module::-webkit-scrollbar,

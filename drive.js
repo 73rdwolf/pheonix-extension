@@ -11,6 +11,7 @@ let folderCreationPromises = {};
 let driveRefreshTimer = null;
 let isDriveLive = false;
 let driveQuotaCache = null;
+let isSyncInProgress = false;
 
 // DOM Elements Cache
 let elements = {};
@@ -926,6 +927,11 @@ async function makeFilePublic(token, fileId) {
 /* --- SYNC & IO --- */
 
 export async function syncDriveFiles(token) {
+    if (isSyncInProgress) {
+        console.log('[Drive] Sync already in progress, skipping...');
+        return;
+    }
+    isSyncInProgress = true;
     // Auto-refresh timer
     if (!driveRefreshTimer) {
         driveRefreshTimer = setInterval(() => {
@@ -1053,6 +1059,8 @@ export async function syncDriveFiles(token) {
         if (listEl) {
             listEl.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text-error,red);">Error loading files. Please refresh.</div>';
         }
+    } finally {
+        isSyncInProgress = false;
     }
 }
 

@@ -4,221 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <!-- CRITICAL: Inject CSS BEFORE anything else to prevent flash -->
-  <script>
-    // This MUST run before any rendering - inject CSS directly into document
-    // Use immediate execution, no dependencies, works even if localStorage fails
-    (function() {
-      'use strict';
-      // CRITICAL: Default to LIGHT GRAY to prevent white flash
-      // HTML tag already has #F2F2F2, so we maintain that unless dark theme
-      var bgColor = '#F2F2F2'; // Default light - prevents white flash
-      var isLight = true; // Default to light to prevent white flash
-      
-      // Try to read theme, but don't block if it fails
-      try {
-        var pref = localStorage.getItem('theme_preference');
-        var mode = localStorage.getItem('theme_mode');
-        var theme = pref || mode || 'auto';
-        
-        if (theme === 'light') {
-          isLight = true;
-          bgColor = '#F2F2F2';
-        } else if (theme === 'dark') {
-          isLight = false;
-          bgColor = '#0A0A0B';
-        } else if (theme === 'auto') {
-          try {
-            isLight = !window.matchMedia('(prefers-color-scheme: dark)').matches;
-            bgColor = isLight ? '#F2F2F2' : '#0A0A0B';
-          } catch(e) {
-            // Fallback to light to prevent white flash
-            isLight = true;
-            bgColor = '#F2F2F2';
-          }
-        }
-        
-        var solidColor = localStorage.getItem('solid_bg_color');
-        if (solidColor && solidColor.trim()) {
-          bgColor = solidColor;
-          // If custom color is set, try to determine if it's light or dark
-          // Simple heuristic: if it's closer to white, it's light
-          try {
-            var rgb = solidColor.match(/\d+/g);
-            if (rgb && rgb.length >= 3) {
-              var r = parseInt(rgb[0]);
-              var g = parseInt(rgb[1]);
-              var b = parseInt(rgb[2]);
-              // If average is > 128, it's likely a light color
-              isLight = ((r + g + b) / 3) > 128;
-            }
-          } catch(e) {}
-        }
-      } catch(e) {
-        // If localStorage fails, default to light to prevent white flash
-        isLight = true;
-        bgColor = '#F2F2F2';
-      }
-      
-      // CRITICAL: Set background IMMEDIATELY - this is the fastest method
-      var html = document.documentElement;
-      
-      // Set background directly on HTML element FIRST (fastest)
-      html.style.setProperty('background-color', bgColor, 'important');
-      html.style.setProperty('background', bgColor, 'important');
-      
-      // Apply theme class immediately
-      if (isLight) {
-        html.classList.add('light-theme');
-      } else {
-        html.classList.remove('light-theme');
-      }
-      
-      // CRITICAL: Inject CSS into head IMMEDIATELY as backup
-      // This works even before the head tag is fully parsed
-      var style = document.createElement('style');
-      style.id = 'critical-bg-inline';
-      style.setAttribute('data-bg', bgColor);
-      style.textContent = 
-        'html{background-color:' + bgColor + '!important;background:' + bgColor + '!important;}' +
-        'html:not(.light-theme){background-color:#0A0A0B!important;background:#0A0A0B!important;}' +
-        'html.light-theme{background-color:#F2F2F2!important;background:#F2F2F2!important;}' +
-        'body{background-color:inherit!important;background:inherit!important;margin:0!important;padding:0!important;}';
-      
-      // Insert at the very beginning of head
-      var head = document.head || document.getElementsByTagName('head')[0] || document.documentElement;
-      head.insertBefore(style, head.firstChild);
-      
-      // Update meta theme-color if it exists
-      try {
-        var metaTheme = document.getElementById('theme-color-meta');
-        if (metaTheme) {
-          metaTheme.content = bgColor;
-        }
-      } catch(e) {}
-      
-      // Watch for body and set background immediately when it appears
-      var setBodyBg = function() {
-        try {
-          if (document.body) {
-            document.body.style.setProperty('background-color', bgColor, 'important');
-            document.body.style.setProperty('background', bgColor, 'important');
-            return true;
-          }
-        } catch(e) {}
-        return false;
-      };
-      
-      // Try immediately
-      if (!setBodyBg()) {
-        // Use MutationObserver for immediate detection
-        try {
-          var observer = new MutationObserver(function() {
-            if (setBodyBg()) {
-              observer.disconnect();
-            }
-          });
-          observer.observe(document.documentElement, { 
-            childList: true, 
-            subtree: true,
-            attributes: false
-          });
-          // Also try on next tick
-          setTimeout(setBodyBg, 0);
-        } catch(e) {
-          // Fallback: try periodically
-          var interval = setInterval(function() {
-            if (setBodyBg()) {
-              clearInterval(interval);
-            }
-          }, 1);
-          setTimeout(function() { clearInterval(interval); }, 100);
-        }
-      }
-    })();
-  </script>
+  <script src="early_init.js"></script>
+
   <!-- CRITICAL: Meta theme-color must be FIRST to prevent browser chrome flash -->
   <!-- Default to light gray to prevent white flash, will be updated by script -->
   <meta name="theme-color" content="#F2F2F2" id="theme-color-meta">
   <!-- CRITICAL: Set background color IMMEDIATELY to prevent flash -->
-  <script>
-    // CRITICAL: This script MUST run synchronously before any paint
-    // Use IIFE with immediate execution, no async/await
-    (function() {
-      'use strict';
-      try {
-        // Read theme from localStorage synchronously (fast)
-        const pref = localStorage.getItem('theme_preference');
-        const mode = localStorage.getItem('theme_mode');
-        const theme = pref || mode || 'auto';
-      
-      // Determine if light theme
-      let isLight = false;
-      if (theme === 'light') {
-        isLight = true;
-      } else if (theme === 'auto') {
-        try {
-          isLight = !window.matchMedia('(prefers-color-scheme: dark)').matches;
-        } catch(e) {
-          isLight = false; // Default to dark if media query fails
-        }
-      }
-      
-      // Get background color
-      const solidColor = localStorage.getItem('solid_bg_color');
-      const finalBg = solidColor || (isLight ? '#F2F2F2' : '#0A0A0B');
-      
-      // Apply to html IMMEDIATELY (before any rendering)
-      const html = document.documentElement;
-      // Set both CSS variable and inline style for maximum compatibility
-      html.style.setProperty('--bg-core', finalBg);
-      html.style.setProperty('--bg-core-inline', finalBg);
-      // Use both backgroundColor and background for maximum browser compatibility
-      html.style.backgroundColor = finalBg;
-      html.style.background = finalBg;
-      
-      // Update meta theme-color immediately
-      const metaTheme = document.getElementById('theme-color-meta');
-      if (metaTheme) {
-        metaTheme.content = finalBg;
-      }
-      
-      // Apply theme class
-      if (isLight) {
-        html.classList.add('light-theme');
-      } else {
-        html.classList.remove('light-theme');
-      }
-      
-      // Set body background when it exists (use MutationObserver for immediate detection)
-      const setBodyBg = function() {
-        if (document.body) {
-          document.body.style.setProperty('--bg-core-inline', finalBg);
-          document.body.style.backgroundColor = finalBg;
-          document.body.style.background = finalBg;
-          return true;
-        }
-        return false;
-      };
-      
-      // Try immediately
-      if (!setBodyBg()) {
-        // If body doesn't exist yet, watch for it
-        const observer = new MutationObserver(function() {
-          if (setBodyBg()) {
-            observer.disconnect();
-          }
-        });
-        observer.observe(document.documentElement, { childList: true, subtree: true });
-        // Also try on next tick
-        setTimeout(setBodyBg, 0);
-      }
-      } catch(e) {
-        // Fallback: ensure dark background is set even if script fails
-        document.documentElement.style.backgroundColor = '#0A0A0B';
-        document.documentElement.style.background = '#0A0A0B';
-      }
-    })();
-  </script>
+
   <style>
     /* CRITICAL ANTI-FOUC CSS */
     body {
@@ -243,78 +35,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;600&family=Oswald:wght@200;300;400;500;700&family=Roboto+Mono:wght@200;300;400&family=JetBrains+Mono:wght@200;300&family=Orbitron:wght@400;500&family=Azeret+Mono:wght@200;300&display=block"
     rel="stylesheet">
-  <script>
-    (function () {
-      // This script runs after the blocking script above
-      // It ensures meta theme-color and other settings are applied
-      // Background color is already set by the blocking script above
-      
-      const doc = document.documentElement;
-      const pref = localStorage.getItem('theme_preference');
-      const mode = localStorage.getItem('theme_mode');
-      const theme = pref || mode || 'auto';
-      
-      let isLight = false;
-      if (theme === 'light') isLight = true;
-      else if (theme === 'auto') {
-        isLight = !window.matchMedia('(prefers-color-scheme: dark)').matches;
-      }
 
-      // Get current background (already set by blocking script, but ensure it's correct)
-      const solidColor = localStorage.getItem('solid_bg_color');
-      const finalBg = solidColor || (isLight ? '#F2F2F2' : '#0A0A0B');
-      
-      // Ensure background is still set (in case chrome.storage.local has different value)
-      doc.style.setProperty('--bg-core', finalBg);
-      doc.style.setProperty('--bg-core-inline', finalBg);
-      doc.style.setProperty('background-color', finalBg, 'important');
-      doc.style.setProperty('background', finalBg, 'important');
-      
-      // Update critical CSS if it exists
-      var criticalStyle = document.getElementById('critical-bg-inline');
-      if (criticalStyle) {
-        criticalStyle.setAttribute('data-bg', finalBg);
-        criticalStyle.textContent = 
-          'html{background-color:' + finalBg + '!important;background:' + finalBg + '!important;}' +
-          'html.light-theme{background-color:' + (isLight ? '#F2F2F2' : '#0A0A0B') + '!important;background:' + (isLight ? '#F2F2F2' : '#0A0A0B') + '!important;}' +
-          'body{background-color:inherit!important;background:inherit!important;margin:0!important;padding:0!important;}';
-      }
-      
-      if (document.body) {
-        document.body.style.setProperty('--bg-core-inline', finalBg);
-        document.body.style.setProperty('background-color', finalBg, 'important');
-        document.body.style.setProperty('background', finalBg, 'important');
-      }
-
-      // Dynamic Meta Theme Color to prevent browser chrome flash
-      let metaTheme = document.getElementById('theme-color-meta') || document.querySelector('meta[name="theme-color"]');
-      if (!metaTheme) {
-        metaTheme = document.createElement('meta');
-        metaTheme.id = 'theme-color-meta';
-        metaTheme.name = "theme-color";
-        document.head.appendChild(metaTheme);
-      }
-      metaTheme.content = finalBg;
-
-      // Gradient
-      if (localStorage.getItem('gradient_enabled') === 'true') {
-        const g1 = localStorage.getItem('gradient_color_1');
-        const g2 = localStorage.getItem('gradient_color_2');
-        if (g1) doc.style.setProperty('--gradient-color-1', g1);
-        if (g2) doc.style.setProperty('--gradient-color-2', g2);
-        doc.classList.add('has-gradient');
-      } else {
-        doc.classList.remove('has-gradient');
-      }
-
-      // Font
-      const font = localStorage.getItem('font_hud_preference');
-      if (font) doc.style.setProperty('--font-hud', font);
-
-      // Pre-loaded marker
-      if (pref || mode) doc.classList.add('pre-loaded');
-    })();
-  </script>
   <link rel="stylesheet" href="critical.css">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="nexus.css">
@@ -480,8 +201,8 @@
         </div>
 
         <!-- Hidden Inputs -->
-        <input type="file" id="drive-file-input" style="display:none">
-        <input type="file" id="drive-folder-input" style="display:none" webkitdirectory>
+        <input type="file" id="drive-file-input" style="display:none" aria-label="Upload File">
+        <input type="file" id="drive-folder-input" style="display:none" webkitdirectory aria-label="Upload Folder">
 
         <!-- Overlays -->
         <div class="success-overlay hidden" id="upload-success-overlay">
@@ -512,13 +233,14 @@
       <div class="module-card" id="tasks-module">
         <div class="module-header">
           <div class="header-left">TASKS</div>
-          <button id="add-task-btn" class="icon-btn-small">+</button>
+          <button id="add-task-btn" class="icon-btn-small" aria-label="Add Task">+</button>
         </div>
         <div class="module-content">
           <!-- Smart Add Task Card (Grid Animation Wrapper) -->
           <div id="add-task-card" class="add-task-card hidden">
             <div class="add-task-inner">
-              <input type="text" id="smart-task-title" class="smart-task-input" placeholder="What needs to be done?">
+              <input type="text" id="smart-task-title" class="smart-task-input" placeholder="What needs to be done?"
+                aria-label="Task Title">
 
               <textarea id="smart-task-notes" class="smart-task-notes" placeholder="Details (optional)..."></textarea>
               <div class="smart-footer">
@@ -619,15 +341,17 @@
         </svg>
         <span>ACCOUNT</span>
       </button>
-      
+
       <button class="settings-tab-btn" data-tab="preferences">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          <path
+            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+          </path>
         </svg>
         <span>PREFERENCES</span>
       </button>
-      
+
       <button class="settings-tab-btn" data-tab="privacy">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
@@ -645,7 +369,8 @@
           <div class="settings-section-header">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"></circle>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+              </path>
             </svg>
             <h4>THEME & DISPLAY</h4>
           </div>
@@ -654,7 +379,8 @@
               <div class="setting-label">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                  </path>
                 </svg>
                 <span>Theme Mode</span>
               </div>
@@ -671,7 +397,7 @@
                     x="4" y="16" font-size="12" font-family="serif" fill="currentColor" stroke="none">Aa</text></svg>
                 <span>HUD Font</span>
               </div>
-              <select id="font-family-select" class="settings-select">
+              <select id="font-family-select" class="settings-select" aria-label="Font Family">
                 <option value="'Oswald', sans-serif">OSWALD</option>
                 <option value="'Inter', sans-serif">INTER</option>
                 <option value="'Roboto Mono', monospace">ROBOTO MONO</option>
@@ -691,8 +417,10 @@
                 <span>Accent Color</span>
               </div>
               <div class="gradient-picker-group">
-                <input type="color" id="accent-color-picker" value="#FF6B00" class="color-picker-mini">
-                <input type="text" id="accent-hex-input" value="#FF6B00" placeholder="#FF6B00" class="hex-input-mini">
+                <input type="color" id="accent-color-picker" value="#FF6B00" class="color-picker-mini"
+                  aria-label="Accent Color Picker">
+                <input type="text" id="accent-hex-input" value="#FF6B00" placeholder="#FF6B00" class="hex-input-mini"
+                  aria-label="Accent Color Hex">
               </div>
             </div>
 
@@ -706,9 +434,12 @@
                 <span>Canvas Scale</span>
               </div>
               <div class="slider-control-group">
-                <button class="slider-btn" data-action="dec" data-target="ui-scale-slider">−</button>
-                <input type="range" id="ui-scale-slider" min="50" max="150" value="70" step="5">
-                <button class="slider-btn" data-action="inc" data-target="ui-scale-slider">+</button>
+                <button class="slider-btn" data-action="dec" data-target="ui-scale-slider"
+                  aria-label="Decrease Canvas Scale">−</button>
+                <input type="range" id="ui-scale-slider" min="50" max="150" value="70" step="5"
+                  aria-label="Canvas Scale">
+                <button class="slider-btn" data-action="inc" data-target="ui-scale-slider"
+                  aria-label="Increase Canvas Scale">+</button>
                 <span id="scale-value-display" class="scale-value">70%</span>
               </div>
             </div>
@@ -749,7 +480,7 @@
                 </svg>
                 <span>Grid Type</span>
               </div>
-              <select id="grid-style-select" class="settings-select">
+              <select id="grid-style-select" class="settings-select" aria-label="Grid Style">
                 <option value="none">NONE</option>
                 <option value="lines">REGULAR LINES</option>
                 <option value="graph-paper">GRAPH PAPER</option>
@@ -765,9 +496,11 @@
                 <span>Grid Size</span>
               </div>
               <div class="slider-control-group">
-                <button class="slider-btn" data-action="dec" data-target="grid-size-slider">−</button>
-                <input type="range" id="grid-size-slider" min="20" max="200" value="90" step="2">
-                <button class="slider-btn" data-action="inc" data-target="grid-size-slider">+</button>
+                <button class="slider-btn" data-action="dec" data-target="grid-size-slider"
+                  aria-label="Decrease Grid Size">−</button>
+                <input type="range" id="grid-size-slider" min="20" max="200" value="90" step="2" aria-label="Grid Size">
+                <button class="slider-btn" data-action="inc" data-target="grid-size-slider"
+                  aria-label="Increase Grid Size">+</button>
                 <span id="grid-size-display" class="scale-value">90px</span>
               </div>
             </div>
@@ -781,9 +514,12 @@
                 <span>Opacity</span>
               </div>
               <div class="slider-control-group">
-                <button class="slider-btn" data-action="dec" data-target="grid-opacity-slider">−</button>
-                <input type="range" id="grid-opacity-slider" min="0" max="100" value="10" step="5">
-                <button class="slider-btn" data-action="inc" data-target="grid-opacity-slider">+</button>
+                <button class="slider-btn" data-action="dec" data-target="grid-opacity-slider"
+                  aria-label="Decrease Grid Opacity">−</button>
+                <input type="range" id="grid-opacity-slider" min="0" max="100" value="10" step="5"
+                  aria-label="Grid Opacity">
+                <button class="slider-btn" data-action="inc" data-target="grid-opacity-slider"
+                  aria-label="Increase Grid Opacity">+</button>
                 <span id="grid-opacity-display" class="scale-value">10%</span>
               </div>
             </div>
@@ -796,9 +532,12 @@
                 <span>Thickness</span>
               </div>
               <div class="slider-control-group">
-                <button class="slider-btn" data-action="dec" data-target="grid-thickness-slider">−</button>
-                <input type="range" id="grid-thickness-slider" min="0.5" max="4" value="1" step="0.5">
-                <button class="slider-btn" data-action="inc" data-target="grid-thickness-slider">+</button>
+                <button class="slider-btn" data-action="dec" data-target="grid-thickness-slider"
+                  aria-label="Decrease Grid Thickness">−</button>
+                <input type="range" id="grid-thickness-slider" min="0.5" max="4" value="1" step="0.5"
+                  aria-label="Grid Thickness">
+                <button class="slider-btn" data-action="inc" data-target="grid-thickness-slider"
+                  aria-label="Increase Grid Thickness">+</button>
                 <span id="grid-thickness-display" class="scale-value">1px</span>
               </div>
             </div>
@@ -823,7 +562,7 @@
                 </svg>
                 <span>Enable Gradient</span>
               </div>
-              <label class="toggle-switch">
+              <label class="toggle-switch" aria-label="Toggle Gradient">
                 <input type="checkbox" id="gradient-toggle">
                 <span class="toggle-slider"></span>
               </label>
@@ -838,8 +577,10 @@
                 <span>Color 1</span>
               </div>
               <div class="gradient-picker-group">
-                <input type="color" id="gradient-color-1" value="#FF6B00" class="color-picker-mini">
-                <input type="text" id="gradient-hex-1" value="#FF6B00" placeholder="#FF6B00" class="hex-input-mini">
+                <input type="color" id="gradient-color-1" value="#FF6B00" class="color-picker-mini"
+                  aria-label="Gradient Color 1 Picker">
+                <input type="text" id="gradient-hex-1" value="#FF6B00" placeholder="#FF6B00" class="hex-input-mini"
+                  aria-label="Gradient Color 1 Hex">
               </div>
             </div>
 
@@ -852,8 +593,10 @@
                 <span>Color 2</span>
               </div>
               <div class="gradient-picker-group">
-                <input type="color" id="gradient-color-2" value="#FF4500" class="color-picker-mini">
-                <input type="text" id="gradient-hex-2" value="#FF4500" placeholder="#FF4500" class="hex-input-mini">
+                <input type="color" id="gradient-color-2" value="#FF4500" class="color-picker-mini"
+                  aria-label="Gradient Color 2 Picker">
+                <input type="text" id="gradient-hex-2" value="#FF4500" placeholder="#FF4500" class="hex-input-mini"
+                  aria-label="Gradient Color 2 Hex">
               </div>
             </div>
 
@@ -866,9 +609,12 @@
                 <span>Opacity</span>
               </div>
               <div class="slider-control-group">
-                <button class="slider-btn" data-action="dec" data-target="gradient-opacity-slider">−</button>
-                <input type="range" id="gradient-opacity-slider" min="10" max="100" value="100" step="5">
-                <button class="slider-btn" data-action="inc" data-target="gradient-opacity-slider">+</button>
+                <button class="slider-btn" data-action="dec" data-target="gradient-opacity-slider"
+                  aria-label="Decrease Gradient Opacity">−</button>
+                <input type="range" id="gradient-opacity-slider" min="10" max="100" value="100" step="5"
+                  aria-label="Gradient Opacity">
+                <button class="slider-btn" data-action="inc" data-target="gradient-opacity-slider"
+                  aria-label="Increase Gradient Opacity">+</button>
                 <span id="gradient-opacity-display" class="scale-value">100%</span>
               </div>
             </div>
@@ -970,7 +716,7 @@
                 </svg>
                 <span>Upload Notifications</span>
               </div>
-              <label class="toggle-switch">
+              <label class="toggle-switch" aria-label="Toggle Upload Notifications">
                 <input type="checkbox" id="upload-notify-toggle" checked>
                 <span class="toggle-slider"></span>
               </label>
@@ -998,7 +744,7 @@
                 <span>Natural Language</span>
                 <span class="setting-badge">BETA</span>
               </div>
-              <label class="toggle-switch">
+              <label class="toggle-switch" aria-label="Toggle AI Parsing">
                 <input type="checkbox" id="ai-parsing-toggle">
                 <span class="toggle-slider"></span>
               </label>
@@ -1007,11 +753,13 @@
             <div class="setting-row">
               <div class="setting-label">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3"></path>
+                  <path
+                    d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3">
+                  </path>
                 </svg>
                 <span>AI Provider</span>
               </div>
-              <select id="ai-provider-select" class="settings-select">
+              <select id="ai-provider-select" class="settings-select" aria-label="AI Provider">
                 <option value="gemini">GOOGLE GEMINI (Free)</option>
                 <option value="openrouter">OPENROUTER (Multiple Models)</option>
               </select>
@@ -1027,7 +775,7 @@
               </div>
               <div class="input-with-action" style="width: 100%; gap: 8px;">
                 <input type="password" id="ai-api-key" placeholder="Paste your API key here..." class="hex-input-mini"
-                  style="width: 100%; height: 36px; padding: 0 12px;">
+                  style="width: 100%; height: 36px; padding: 0 12px;" aria-label="AI API Key">
                 <button id="save-ai-key-btn" class="settings-action-btn"
                   style="height: 36px; min-width: 60px;">SAVE</button>
               </div>
@@ -1066,7 +814,7 @@
                 </svg>
                 <span>12-Hour Clock Format</span>
               </div>
-              <label class="toggle-switch">
+              <label class="toggle-switch" aria-label="Toggle 12-Hour Clock">
                 <input type="checkbox" id="clock-12h-toggle" checked>
                 <span class="toggle-slider"></span>
               </label>
@@ -1082,7 +830,7 @@
                 </svg>
                 <span>Flip Layout (Clock/Date)</span>
               </div>
-              <label class="toggle-switch">
+              <label class="toggle-switch" aria-label="Toggle Flip Layout">
                 <input type="checkbox" id="clock-swap-toggle">
                 <span class="toggle-slider"></span>
               </label>
@@ -1170,18 +918,18 @@
 
           <div class="form-group">
             <label>Date</label>
-            <input type="text" id="event-date-display" readonly style="opacity:0.7">
+            <input type="text" id="event-date-display" readonly style="opacity:0.7" aria-label="Event Date">
           </div>
 
           <div class="form-group">
             <label>Title</label>
-            <input type="text" id="event-title" placeholder="Event Summary..." autofocus>
+            <input type="text" id="event-title" placeholder="Event Summary..." autofocus aria-label="Event Title">
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label>Time</label>
-              <input type="time" id="event-time">
+              <input type="time" id="event-time" aria-label="Event Time">
             </div>
             <div class="form-group" style="padding-top:25px;">
               <label class="checkbox-label">
@@ -1214,7 +962,7 @@
 
         <div class="delete-selection-header"
           style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 5px;">
-          <label class="checkbox-label" style="font-size: 0.8rem;">
+          <label class="checkbox-label" style="font-size: 0.8rem;" aria-label="Select All Files to Delete">
             <input type="checkbox" id="select-all-delete"> SELECT ALL
           </label>
           <span id="selected-count-display" style="font-size: 0.7rem; opacity: 0.6;">0 FILES SELECTED</span>
@@ -1260,7 +1008,8 @@
         <div class="form-group">
           <label>Link URL</label>
           <div class="input-with-action">
-            <input type="url" id="nexus-bookmark-url" placeholder="https://example.com" autocomplete="off">
+            <input type="url" id="nexus-bookmark-url" placeholder="https://example.com" autocomplete="off"
+              aria-label="Bookmark URL">
             <button type="button" id="nexus-paste-btn" class="input-action-btn" title="Paste from clipboard">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
@@ -1272,7 +1021,8 @@
         <div class="form-group">
           <label>Site Name</label>
           <div class="input-with-status">
-            <input type="text" id="nexus-bookmark-name" placeholder="Site name..." autocomplete="off">
+            <input type="text" id="nexus-bookmark-name" placeholder="Site name..." autocomplete="off"
+              aria-label="Bookmark Name">
             <span id="nexus-name-status" class="input-status"></span>
           </div>
           <span class="form-hint">Auto-fetched from history or page title. You can edit it.</span>
