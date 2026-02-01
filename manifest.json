@@ -1,5 +1,6 @@
 {
   "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3lMFOkRDa28aO6dcey/xcjrkrc8TnAu32glqXFifPjtvhDwTfGqEWV3XF28agZTX63PnAsIdHSumMgwylVtNBVwiLTz31pz+tybnqVAp0oNKnS4shRvNNYcmwcsUQMTQ1kU46raPCuz9QNF0D+KUczdi31/6t7MDgCafOu0HsxZ9gMfpwLOQwPzSkI07rNV/9rcv9anYIk+lsFIRrF5bHgq4ypFjBBb19yi25V4JBgJQM1Pvxpg9lrMaRw6oJ48M4CqSPZHRDZD2bO0KOzgkGjckUp3xujjrKuHaBQ5Y6uXunRfZxgreBn2MCTO/ocZ1uCJEdp8q4ZQnZEd6I7OsWwIDAQAB",
   "name": "Essentials by Atlasssians",
   "version": "2.3",
   "description": "Premium dashboard with Gemini AI & Workspace integration.",

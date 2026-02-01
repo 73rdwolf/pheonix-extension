@@ -143,7 +143,7 @@ async function refreshTokenViaWorker(userEmail) {
 async function startWorkerAuthFlow(interactive = true) {
     const clientId = "635413045241-bh93ib54pa4pd15fj9042qsij99290sp.apps.googleusercontent.com";
     // HARDCODED: Console likely has the slash. Adding it back.
-    const redirectUri = "https://ipmclbopdijpfhlknjhjnijddafggicg.chromiumapp.org/";
+    const redirectUri = `https://${chrome.runtime.id}.chromiumapp.org/`;
 
     console.log('[Background] Starting Worker Auth Flow with URI:', redirectUri);
 
@@ -165,7 +165,7 @@ async function startWorkerAuthFlow(interactive = true) {
 // Token/Code Snatcher (Required for Custom Redirect URIs)
 let lastCapturedCode = null;
 async function snatchTokenFromUrl(urlStr, tabId) {
-    if (!urlStr || !urlStr.includes("ipmclbopdijpfhlknjhjnijddafggicg.chromiumapp.org")) return null;
+    if (!urlStr || !urlStr.includes(`${chrome.runtime.id}.chromiumapp.org`)) return null;
 
     try {
         const url = new URL(urlStr.replace('#', '?'));
@@ -173,7 +173,7 @@ async function snatchTokenFromUrl(urlStr, tabId) {
 
         if (code) {
             console.log("[Background] Auth code captured! Exchanging...");
-            const redirectUri = "https://ipmclbopdijpfhlknjhjnijddafggicg.chromiumapp.org/";
+            const redirectUri = `https://${chrome.runtime.id}.chromiumapp.org/`;
 
             const token = await exchangeCodeForTokens(code, "temp@pending.local", redirectUri);
             if (token) {
@@ -220,7 +220,7 @@ async function snatchTokenFromUrl(urlStr, tabId) {
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
     // Check for BOTH local ID (just in case) and the Hardcoded Store ID
     if (details.frameId === 0) {
-        if (details.url.includes(chrome.runtime.id) || details.url.includes("ipmclbopdijpfhlknjhjnijddafggicg")) {
+        if (details.url.includes(chrome.runtime.id)) {
             snatchTokenFromUrl(details.url, details.tabId);
         }
     }
@@ -231,7 +231,7 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
 // onUpdated sees the URL change in the address bar.
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.url) {
-        if (changeInfo.url.includes("ipmclbopdijpfhlknjhjnijddafggicg") || changeInfo.url.includes(chrome.runtime.id)) {
+        if (changeInfo.url.includes(chrome.runtime.id)) {
             snatchTokenFromUrl(changeInfo.url, tabId);
         }
     }
@@ -481,7 +481,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             try {
                 const clientId = "635413045241-bh93ib54pa4pd15fj9042qsij99290sp.apps.googleusercontent.com";
                 // HARDCODED URI WITH SLASH
-                const redirectUri = "https://ipmclbopdijpfhlknjhjnijddafggicg.chromiumapp.org/";
+                const redirectUri = `https://${chrome.runtime.id}.chromiumapp.org/`;
 
                 console.log('[Background] Initiating Auth Tab with URI:', redirectUri);
 
