@@ -871,13 +871,15 @@ body:not(.light-theme) ::-webkit-scrollbar-thumb:hover {
   height: auto !important;
   /* Grow and shrink with tasks */
   min-height: 80px !important;
-  /* No parent max-height so it can follow content */
+  /* ZOOM COMPENSATED MAX-HEIGHT: */
+  /* We divide by the scale ratio to reach the physical bottom of the viewport */
+  max-height: calc((100vh / var(--ui-scale-ratio, 1)) - 130px) !important;
   display: flex !important;
   flex-direction: column !important;
-  overflow: visible !important;
-  /* Allow child to manage its own bounds */
-  /* Container should NOT scroll */
+  overflow: hidden !important;
+  /* Container clips, content scrolls */
   bottom: auto !important;
+  /* Grows from top */
   /* Ensure it grows from top */
   padding: 25px;
   box-sizing: border-box;
@@ -948,17 +950,16 @@ body:not(.light-theme) ::-webkit-scrollbar-thumb:hover {
 
 /* Base module-content styles for tasks-module */
 #tasks-module .module-content {
-  flex: 0 1 auto !important;
-  /* Start with natural height, allow shrinking if needed */
+  flex: 1 1 auto !important;
+  /* Use full available space in parent */
   min-height: 0 !important;
-  max-height: calc(100vh - 130px) !important;
-  /* Limit content area - approx 40 top + 40 bottom + padding/header */
+  /* Crucial for flex scrolling */
   overflow-y: auto !important;
   overflow-x: hidden !important;
   scrollbar-width: thin !important;
-  /* Show a subtle scrollbar so user knows it's scrollable */
+  /* Subtle scrollbar */
   padding: 8px 12px 20px 12px;
-  contain: none !important;
+  contain: layout style;
   display: block;
 }
 

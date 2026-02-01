@@ -1646,7 +1646,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       try {
         console.log(`[Weather] Fetching from Open-Meteo for ${lat},${lon}...`);
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+
+        // Add a strict timeout for the fallback too
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort('timeout'), 5000);
+
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`, {
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
         if (!res.ok) throw new Error(`OpenMeteo Error: ${res.status}`);
 
         const data = await res.json();
@@ -1665,7 +1674,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           updateUI(temp, conditionText, cityName);
         }
       } catch (err) {
-        console.error("OpenMeteo Error:", err);
+        if (err.name === 'AbortError' || err === 'timeout') {
+          console.warn("[Weather] OpenMeteo fallback timed out.");
+        } else {
+          console.error("OpenMeteo Error:", err);
+        }
         if (container) container.classList.add('loaded'); // Show despite error
       }
     }
@@ -1679,7 +1692,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       try {
-        const res = await fetch(url);
+        // Add a strict 5-second timeout for wttr.in
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort('timeout'), 5000);
+
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
         if (!res.ok) throw new Error(`Weather API Error: ${res.status}`);
 
         const data = await res.json();
@@ -1696,18 +1715,25 @@ document.addEventListener('DOMContentLoaded', async () => {
           updateUI(temp, conditionText, CityName);
         }
       } catch (err) {
-        console.error("Weather Error:", err);
+        // Silence timeouts from console noise
+        const isTimeout = (err.name === 'AbortError' || err === 'timeout');
 
-        // Retry logic for transient network errors (like ERR_HTTP2_PROTOCOL_ERROR)
-        if (retryCount < 2) {
-          console.log(`[Weather] Retrying fetch... (${retryCount + 1})`);
-          await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
-          return fetchWeatherData(lat, lon, retryCount + 1);
+        if (isTimeout) {
+          console.warn("[Weather] Primary service timed out, skipping retries...");
+        } else {
+          console.error("Weather Error:", err);
         }
 
-        // Fallback to OpenMeteo
-        console.log("[Weather] Falling back to OpenMeteo...");
-        return fetchOpenMeteo(lat, lon);
+        // If it was a timeout, go STRAIGHT to OpenMeteo. Don't wait for retries.
+        if (isTimeout || retryCount >= 2) {
+          console.log("[Weather] Moving to OpenMeteo fallback...");
+          return fetchOpenMeteo(lat, lon);
+        }
+
+        // Retry only for non-timeout transient network errors
+        console.log(`[Weather] Retrying fetch... (${retryCount + 1})`);
+        await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
+        return fetchWeatherData(lat, lon, retryCount + 1);
       }
     }
 
