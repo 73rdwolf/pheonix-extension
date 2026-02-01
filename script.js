@@ -6679,12 +6679,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function initModuleResizing() {
-    const taskModule = document.getElementById('tasks-module');
-    const handle = document.getElementById('task-resize-handle');
-    if (!taskModule || !handle) return;
-
     // User requested AUTO-EXPANSION based on content.
-    // Disabling manual resize logic to prevent fixed heights.
+    // Fixed positioning and CSS max-height: calc(100vh - 80px) handle the boundary.
     return;
 
     // Load saved height
@@ -6746,23 +6742,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function initTaskHoverExpansion() {
-    const taskModule = document.getElementById('tasks-module');
-    if (!taskModule) return;
-
     // User requested AUTO-EXPANSION based on content.
-    // Disabling hover logic to prevent collapsing.
-    /*
-    taskModule.addEventListener('mouseenter', () => {
-      taskModule.classList.add('expanded-hover');
-    });
-
-    taskModule.addEventListener('mouseleave', () => {
-      taskModule.classList.remove('expanded-hover');
-      // Reset explicit height style so it collapses to the CSS defined min-height
-      taskModule.style.removeProperty('height');
-      taskModule.style.removeProperty('min-height');
-    });
-    */
+    // CSS ensures it grows naturally and stops at the boundary.
+    return;
   }
 
 });

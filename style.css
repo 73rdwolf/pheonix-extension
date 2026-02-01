@@ -863,32 +863,36 @@ body:not(.light-theme) ::-webkit-scrollbar-thumb:hover {
 
 /* TASKS - Top Left (Child 3) */
 #tasks-module {
+  position: fixed !important;
   top: 40px;
   left: 40px;
   width: 380px;
   max-width: calc(100vw - 80px);
   height: auto !important;
-  /* Force auto-height */
+  /* Grow and shrink with tasks */
   min-height: 80px !important;
-  max-height: calc(100vh - 80px) !important;
-  /* Force max-height to viewport limit */
+  /* No parent max-height so it can follow content */
   display: flex !important;
   flex-direction: column !important;
-  overflow: hidden !important;
+  overflow: visible !important;
+  /* Allow child to manage its own bounds */
+  /* Container should NOT scroll */
   bottom: auto !important;
-  /* Enable scroll if content exceeds max-height */
-  scrollbar-width: none;
-  /* Firefox */
+  /* Ensure it grows from top */
   padding: 25px;
-  /* Updated to 25px */
+  box-sizing: border-box;
+  z-index: 1000 !important;
+  /* Ensure it's on top */
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--radius-xl);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     opacity 0.3s ease,
     box-shadow 0.3s ease,
-    min-height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-    height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
     width 0.3s ease;
-  box-sizing: border-box;
-  position: absolute;
+  /* Removed height/min-height transitions which cause auto-height bugs */
 }
 
 .module-resize-handle {
@@ -944,16 +948,18 @@ body:not(.light-theme) ::-webkit-scrollbar-thumb:hover {
 
 /* Base module-content styles for tasks-module */
 #tasks-module .module-content {
-  flex: 1 1 auto;
-  min-height: 0;
-  /* Crucial for flex scrolling */
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: none;
-  /* Hide scrollbar for Firefox */
+  flex: 0 1 auto !important;
+  /* Start with natural height, allow shrinking if needed */
+  min-height: 0 !important;
+  max-height: calc(100vh - 130px) !important;
+  /* Limit content area - approx 40 top + 40 bottom + padding/header */
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: thin !important;
+  /* Show a subtle scrollbar so user knows it's scrollable */
   padding: 8px 12px 20px 12px;
-  /* Ensure content doesn't overflow */
-  contain: layout style;
+  contain: none !important;
+  display: block;
 }
 
 
