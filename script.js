@@ -1675,7 +1675,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       } catch (err) {
         if (err.name === 'AbortError' || err === 'timeout') {
-          console.warn("[Weather] OpenMeteo fallback timed out.");
+          // Silent fallback
         } else {
           console.error("OpenMeteo Error:", err);
         }
@@ -1719,7 +1719,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const isTimeout = (err.name === 'AbortError' || err === 'timeout');
 
         if (isTimeout) {
-          console.warn("[Weather] Primary service timed out, skipping retries...");
+          // Silent fallback
         } else {
           console.error("Weather Error:", err);
         }

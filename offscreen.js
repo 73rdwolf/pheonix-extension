@@ -16,8 +16,8 @@ function detectAndSendTheme() {
     chrome.runtime.sendMessage({
         type: 'THEME_DETECTED',
         theme: theme
-    }).catch(err => {
-        console.error('[Offscreen] Failed to send theme update:', err);
+    }).catch(() => {
+        // Silent failure for theme updates
     });
 }
 
@@ -37,8 +37,8 @@ chrome.runtime.onMessage.addListener(async (msg, sender, sendResponse) => {
         console.log('[Offscreen] Playing notification sound');
         await playSound(msg.source);
         sendResponse(true);
+        return true;
     }
-    return true;
 });
 
 async function playSound(source) {

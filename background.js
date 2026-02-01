@@ -528,8 +528,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         })();
         return true;
     }
-
-    return true;
 });
 
 // Create offscreen document immediately to start the 10s loop
