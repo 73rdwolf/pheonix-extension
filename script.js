@@ -4826,7 +4826,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (forceVisible) {
       console.log("[Auth] forceVisible=true, Opening Login Tab directly...");
       const clientId = "635413045241-bh93ib54pa4pd15fj9042qsij99290sp.apps.googleusercontent.com";
-      const redirectUri = "https://ipmclbopdijpfhlknjhjnijddafggicg.chromiumapp.org/";
+      const redirectUri = `https://${chrome.runtime.id}.chromiumapp.org/`;
       const authUrl = new URL('https://accounts.google.com/o/oauth2/auth');
 
       authUrl.searchParams.set('client_id', clientId);
