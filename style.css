@@ -4,6 +4,10 @@
   box-sizing: border-box;
 }
 
+.hidden {
+  display: none !important;
+}
+
 html {
   overflow: hidden;
   height: 100%;
@@ -529,7 +533,7 @@ body.swap-header #date-display {
   bottom: 30px;
   right: 100px;
   /* Aligned with settings btn (30px + 50px + 20px gap) */
-  background: var(--glass-bg) !important;
+  background: var(--glass-bg);
   /* Theme adaptation fix */
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(20px);
@@ -549,8 +553,17 @@ body.swap-header #date-display {
   justify-content: flex-end;
   /* Keep footer at bottom */
   overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 100;
+}
+
+#drive-target-card.hidden {
+  display: none !important;
+}
+
+#drive-target-card {
   will-change: max-height, border-radius;
-  transition: max-height 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), border-radius 0.4s ease;
+  transition: max-height 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), border-radius 0.4s ease, all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 #drive-target-card.expanded {
@@ -790,31 +803,7 @@ body:not(.light-theme) ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.25);
 }
 
-/* Quota Mini-Section - Evenly spaced layout */
-.drive-quota-section {
-  height: 60px;
-  padding: 0 16px;
-  background: transparent;
-  border-top: 1px solid var(--glass-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-}
 
-/* Left side container for ring + text */
-.quota-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* Right side container for action buttons */
-.quota-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
 /* Updated Ring Styles */
 .quota-ring-modern svg {
@@ -4017,21 +4006,39 @@ option {
   margin-top: 6px;
 }
 
-/* Quota Bar */
-/* Quota Bar */
-.drive-quota-container {
-  display: block;
-  /* Changed from flex */
-  margin-left: 0;
+/* Quota Bar Section */
+.drive-quota-section {
+  height: 60px;
+  padding: 0 16px;
   background: transparent;
-  padding: 8px 0;
-  /* Keep vertical spacing, remove horizontal padding */
-  border: none;
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
   box-sizing: border-box;
 }
 
-.drive-quota-container.hidden {
-  display: none;
+.drive-quota-section.hidden {
+  display: none !important;
+  height: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  margin: 0 !important;
+}
+
+/* Left side container for ring + text */
+.quota-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Right side container for action buttons */
+.quota-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .quota-bar {

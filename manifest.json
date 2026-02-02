@@ -49,19 +49,6 @@
       "run_at": "document_idle"
     }
   ],
-  "oauth2": {
-    "client_id": "635413045241-bh93ib54pa4pd15fj9042qsij99290sp.apps.googleusercontent.com",
-    "scopes": [
-      "https://www.googleapis.com/auth/gmail.readonly",
-      "https://www.googleapis.com/auth/gmail.modify",
-      "https://www.googleapis.com/auth/gmail.send",
-      "https://www.googleapis.com/auth/calendar",
-      "https://www.googleapis.com/auth/tasks",
-      "https://www.googleapis.com/auth/drive.file",
-      "https://www.googleapis.com/auth/userinfo.email",
-      "https://www.googleapis.com/auth/userinfo.profile"
-    ]
-  },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com"
   }

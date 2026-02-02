@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let isCalendarSyncing = false;
 
   // --- AUTH CONSTANTS (HOISTED) ---
-  // Cloudflare Worker endpoint for persistent auth
+  const ENABLE_WORKER = true; // Set to true after deploying Cloudflare Worker
   const WORKER_URL = "https://pheonix-auth.pixelarenaltd.workers.dev";
 
   // Google OAuth scopes
@@ -34,9 +34,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const loginBtn = document.getElementById('login-btn');
     const headerLoginBtn = document.getElementById('header-login-btn');
     const headerLogoutBtn = document.getElementById('header-logout-btn');
+    const driveCard = document.getElementById('drive-target-card');
+
     if (loginRow) loginRow.style.display = 'flex';
     if (headerLoginBtn) headerLoginBtn.style.display = 'block';
     if (headerLogoutBtn) headerLogoutBtn.style.display = 'none';
+    if (driveCard) driveCard.classList.add('hidden');
+
     if (loginBtn) {
       loginBtn.textContent = "CONNECT GOOGLE";
       loginBtn.style.display = 'block';
@@ -49,10 +53,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const loginBtn = document.getElementById('login-btn');
     const headerLoginBtn = document.getElementById('header-login-btn');
     const headerLogoutBtn = document.getElementById('header-logout-btn');
+    const driveCard = document.getElementById('drive-target-card');
+
     if (loginRow) loginRow.style.display = 'none';
     if (headerLoginBtn) headerLoginBtn.style.display = 'none';
     if (headerLogoutBtn) headerLogoutBtn.style.display = 'block';
     if (loginBtn) loginBtn.style.display = 'none';
+    if (driveCard) driveCard.classList.remove('hidden');
+
     document.body.classList.add('logged-in');
   };
 
@@ -1215,6 +1223,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       function finishOnboarding() {
+        // Immediate Feedback
+        if (tourNextBtn) {
+          tourNextBtn.textContent = 'Launching...';
+          tourNextBtn.disabled = true;
+          tourNextBtn.style.opacity = '0.7';
+        }
+        // Hide tour overlay so user sees the confetti/background
+        if (tourOverlay) {
+          tourOverlay.classList.remove('active');
+        }
+
+
         // Save
         const settings = {
           onboarding_completed: true,
@@ -1684,56 +1704,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function fetchWeatherData(lat, lon, retryCount = 0) {
-      let url = "https://wttr.in/?format=j1";
       if (lat && lon) {
-        // Use a cache-busting parameter to bypass some HTTP/2 issues
-        url = `https://wttr.in/${lat},${lon}?format=j1&_t=${Date.now()}`;
-        localStorage.setItem('weather_last_coords', JSON.stringify({ lat, lon }));
+        try {
+          // Open-Meteo is the primary source: Reliable, Fast, and rarely blocked.
+          return await fetchOpenMeteo(lat, lon);
+        } catch (e) {
+          // Completely silent fallback for weather noise
+        }
       }
 
+      // Background Worker fallback (Silently attempt if deployed)
+      if (!ENABLE_WORKER) return;
+
       try {
-        // Add a strict 5-second timeout for wttr.in
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort('timeout'), 5000);
+        const res = await fetch('https://pheonix-auth.pixelarenaltd.workers.dev/weather', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lat, lon }),
+          // High timeout to avoid long pending red logs if worker is down
+          signal: AbortSignal.timeout(2000)
+        });
 
-        const res = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeoutId);
-
-        if (!res.ok) throw new Error(`Weather API Error: ${res.status}`);
-
-        const data = await res.json();
-        if (data.current_condition && data.current_condition[0]) {
-          const current = data.current_condition[0];
-          const temp = current.temp_C;
-          const conditionText = current.weatherDesc[0].value;
-
-          let CityName = "Unknown";
-          if (data.nearest_area && data.nearest_area[0]) {
-            const area = data.nearest_area[0];
-            CityName = area.areaName ? area.areaName[0].value : "Unknown";
+        if (res.ok) {
+          const data = await res.json();
+          if (data.temp !== undefined) {
+            updateUI(data.temp, data.condition, data.city);
           }
-          updateUI(temp, conditionText, CityName);
         }
       } catch (err) {
-        // Silence timeouts from console noise
-        const isTimeout = (err.name === 'AbortError' || err === 'timeout');
-
-        if (isTimeout) {
-          // Silent fallback
-        } else {
-          console.error("Weather Error:", err);
-        }
-
-        // If it was a timeout, go STRAIGHT to OpenMeteo. Don't wait for retries.
-        if (isTimeout || retryCount >= 2) {
-          console.log("[Weather] Moving to OpenMeteo fallback...");
-          return fetchOpenMeteo(lat, lon);
-        }
-
-        // Retry only for non-timeout transient network errors
-        console.log(`[Weather] Retrying fetch... (${retryCount + 1})`);
-        await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
-        return fetchWeatherData(lat, lon, retryCount + 1);
+        // Silenced
       }
     }
 
@@ -1860,152 +1859,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (headerLoginBtn) headerLoginBtn.style.display = 'block';
 
 
-    // Reusable Auth Flow - USES launchWebAuthFlow (works with Web application OAuth client)
+    // Reusable Auth Flow
     const startAuthFlow = async () => {
-      console.log("[Auth] 🚀 LOGIN: Using launchWebAuthFlow for Web OAuth client...");
-      console.log("[Auth] 📋 Current Extension ID:", chrome.runtime.id);
+      console.log("[Auth] 🚀 LOGIN Triggered");
       showNotification("CONNECTING TO GOOGLE...", "info");
 
-      try {
-        // Clear cache first
-        await new Promise((resolve) => {
-          chrome.identity.clearAllCachedAuthTokens(() => {
-            console.log("[Auth] ✅ All cached tokens cleared");
-            resolve();
-          });
-        });
-
-        // Build OAuth URL
-        const scopes = [
-          "https://www.googleapis.com/auth/gmail.readonly",
-          "https://www.googleapis.com/auth/gmail.modify",
-          "https://www.googleapis.com/auth/gmail.send",
-          "https://www.googleapis.com/auth/calendar",
-          "https://www.googleapis.com/auth/tasks",
-          "https://www.googleapis.com/auth/drive.file",
-          "https://www.googleapis.com/auth/userinfo.email",
-          "https://www.googleapis.com/auth/userinfo.profile"
-        ];
-
-        const clientId = "635413045241-bh93ib54pa4pd15fj9042qsij99290sp.apps.googleusercontent.com";
-        const redirectUri = `https://${chrome.runtime.id}.chromiumapp.org/`;
-
-        console.log("⚠️⚠️⚠️ IMPORTANT - CHECK THIS ⚠️⚠️⚠️");
-        console.log("[Auth] Extension ID:", chrome.runtime.id);
-        console.log("[Auth] Redirect URI:", redirectUri);
-        console.log("☝️ This EXACT redirect URI must be in Google Cloud Console!");
-
-        // Use Authorization Code Flow (response_type=code) for proper scope grants
-        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-          `client_id=${clientId}&` +
-          `response_type=code&` +  // Changed from 'token' to 'code'
-          `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-          `scope=${encodeURIComponent(scopes.join(' '))}&` +
-          `access_type=offline&` +  // Request refresh token
-          `prompt=consent`;  // Force consent to ensure all scopes granted
-
-        console.log("[Auth] Launching auth flow with URL:", authUrl);
-
-        // Use launchWebAuthFlow (works with Web application OAuth clients)
-        const responseUrl = await new Promise((resolve, reject) => {
-          chrome.identity.launchWebAuthFlow(
-            {
-              url: authUrl,
-              interactive: true
-            },
-            (redirectUrl) => {
-              if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-              } else {
-                resolve(redirectUrl);
-              }
-            }
-          );
-        });
-
-        console.log("[Auth] Auth flow completed, response URL:", responseUrl);
-
-        // Extract authorization CODE from URL (format: ?code=xxx&...)
-        const params = new URLSearchParams(responseUrl.split('?')[1]);
-        const code = params.get('code');
-
-        if (!code) {
-          throw new Error("No authorization code in response");
-        }
-
-        console.log("[Auth] ✅ Authorization code obtained! Exchanging via Worker...");
-
-        // Exchange code for tokens via Worker - MUST pass redirect_uri!
-        const exchangeResponse = await fetch('https://pheonix-auth.pixelarenaltd.workers.dev/exchange', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            code,
-            email: 'temp@pending.local',
-            redirect_uri: redirectUri  // CRITICAL: Worker needs this to exchange with Google!
-          })
-        });
-
-        if (!exchangeResponse.ok) {
-          const error = await exchangeResponse.json();
-          throw new Error(`Token exchange failed: ${JSON.stringify(error)}`);
-        }
-
-        const tokenData = await exchangeResponse.json();
-        const token = tokenData.access_token;
-
-        if (!token) {
-          throw new Error("No access token received from Worker");
-        }
-
-        console.log("[Auth] ✅ Token obtained from Worker exchange!");
-
-        // DIAGNOSTIC: Check what scopes this token actually has
-        try {
-          const tokenInfoResponse = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`);
-          const tokenInfo = await tokenInfoResponse.json();
-          console.log("🔍 TOKEN SCOPES:", tokenInfo.scope);
-          console.log("⚠️ CHECK: Does it include calendar, drive, tasks?");
-        } catch (e) {
-          console.error("Failed to get token info:", e);
-        }
-
-        // Save to storage
-        await chrome.storage.local.set({
-          "google_access_token": token,
-          "isLoggedIn": true,
-          "google_user_persistent": true,
-          "google_auth_timestamp": Date.now()
-        });
-
-        showNotification("CONNECTED SUCCESSFULLY", "success");
-
-        // Update profile and sync
-        if (typeof updateProfileInSettings === 'function') {
-          await updateProfileInSettings(token);
-        }
-        if (typeof syncWorkspace === 'function') {
-          await syncWorkspace(token);
-        }
-
-        // Hide login UI
-        const loginRow = document.getElementById('login-row');
-        const loginBtn = document.getElementById('login-btn');
-        const headerLoginBtn = document.getElementById('header-login-btn');
-        if (loginRow) loginRow.style.display = 'none';
-        if (loginBtn) loginBtn.style.display = 'none';
-        if (headerLoginBtn) headerLoginBtn.style.display = 'none';
-        document.body.classList.add('logged-in');
-
-        return;
-
-      } catch (error) {
-        console.error("[Auth] Chrome Identity login failed:", error);
-        showNotification(`LOGIN FAILED: ${error.message}`, "error");
-        return;
-      }
-
-      // FALLBACK 1: Try native chrome.identity (for Chrome Web Store published extensions)
       const scopes = [
         "https://www.googleapis.com/auth/gmail.readonly",
         "https://www.googleapis.com/auth/gmail.modify",
@@ -2017,38 +1875,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         "https://www.googleapis.com/auth/userinfo.profile"
       ];
 
+      // 1. PRIMARY: Web Flow + Worker (Persistent Flow)
       try {
-        const token = await new Promise((resolve, reject) => {
-          chrome.identity.getAuthToken({ interactive: true, scopes: scopes }, (t) => {
-            if (chrome.runtime.lastError || !t) {
-              reject(chrome.runtime.lastError?.message || "No token returned");
-            } else {
-              resolve(t);
-            }
+        const clientId = "635413045241-bh93ib54pa4pd15fj9042qsij99290sp.apps.googleusercontent.com";
+        const redirectUri = `https://${chrome.runtime.id}.chromiumapp.org/`;
+
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes.join(' '))}&access_type=offline&prompt=consent`;
+
+        const responseUrl = await new Promise((resolve, reject) => {
+          chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, (url) => {
+            if (chrome.runtime.lastError) reject();
+            else resolve(url);
           });
         });
 
-        console.log("[Auth] Native chrome.identity success! Token acquired.");
+        if (!responseUrl) return;
 
-        await chrome.storage.local.set({
-          "google_access_token": token,
-          "isLoggedIn": true,
-          "google_user_persistent": true,
-          "google_auth_timestamp": Date.now()
+        const code = new URLSearchParams(responseUrl.split('?')[1]).get('code');
+        if (!code) return;
+
+        const exchangeResponse = await fetch('https://pheonix-auth.pixelarenaltd.workers.dev/exchange', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, email: 'temp@pending.local', redirect_uri: redirectUri }),
+          signal: AbortSignal.timeout(3000)
         });
 
-        showNotification("CONNECTED SUCCESSFULLY", "success");
+        if (exchangeResponse.ok) {
+          const tokenData = await exchangeResponse.json();
+          const token = tokenData.access_token;
 
-        if (typeof updateProfileInSettings === 'function') {
-          updateProfileInSettings(token);
+          await chrome.storage.local.set({
+            "google_access_token": token,
+            "isLoggedIn": true,
+            "google_user_persistent": true,
+            "google_auth_timestamp": Date.now()
+          });
+
+          showNotification("CONNECTED SUCCESSFULLY", "success");
+          if (typeof updateProfileInSettings === 'function') updateProfileInSettings(token);
         }
-        if (typeof syncWorkspace === 'function') {
-          syncWorkspace(token);
-        }
-        return;
       } catch (error) {
-        console.error("[Auth] chrome.identity.getAuthToken failed:", error);
-        showNotification(`LOGIN FAILED: ${error}`, "error");
+        // Completely silent on fallback failure to keep console clean
       }
     };
 

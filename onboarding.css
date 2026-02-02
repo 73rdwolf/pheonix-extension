@@ -31,6 +31,8 @@
 
     /* Accent (inherited from main app) */
     --ob-accent: var(--accent-color, #FF6B00);
+    --ob-text-on-accent: #121214;
+    /* Dark text for white background */
     --ob-accent-glow: color-mix(in srgb, var(--ob-accent) 40%, transparent);
     --ob-accent-soft: color-mix(in srgb, var(--ob-accent) 15%, transparent);
 
@@ -293,9 +295,18 @@
     pointer-events: none;
 }
 
+.ob-phase.exiting {
+    opacity: 0;
+    transform: translateX(-40px);
+    pointer-events: none;
+}
+
+
 .ob-phase.active {
+    display: flex;
     opacity: 1;
     visibility: visible;
+    z-index: 10;
     transform: translateX(0);
     transition: opacity var(--ob-duration-normal) var(--ob-ease-smooth), transform var(--ob-duration-normal) var(--ob-ease-spring), visibility 0s linear 0s;
     pointer-events: auto;
@@ -406,7 +417,7 @@
 
 .ob-btn-primary {
     background: var(--ob-accent);
-    color: #fff;
+    color: var(--ob-text-on-accent);
     box-shadow: 0 4px 20px var(--ob-accent-glow);
 }
 
@@ -1312,7 +1323,8 @@ body:not(.light-theme) .ob-dashboard-preview.ob-live {
 .ob-tour-overlay {
     position: fixed;
     inset: 0;
-    z-index: var(--ob-z-modal);
+    z-index: 2147483647;
+    /* Match ob-content to ensure visibility on top */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1510,7 +1522,8 @@ body:not(.light-theme) .ob-dashboard-preview.ob-live {
     position: fixed;
     inset: 0;
     pointer-events: none;
-    z-index: var(--ob-z-overlay);
+    z-index: 2147483648;
+    /* Must be higher than tour overlay/modal */
     overflow: hidden;
 }
 
@@ -2364,4 +2377,18 @@ body:not(.light-theme) .ob-dashboard-preview.ob-live {
     background: rgba(0, 0, 0, 0.05);
     color: #18181B;
     border-color: rgba(0, 0, 0, 0.15);
+}
+
+/* Aggressive Override for Onboarding Primary Button Visibility */
+#onboarding-modal .ob-btn-primary {
+    background: #FFFFFF !important;
+    color: #121214 !important;
+    box-shadow: 0 4px 20px rgba(255, 255, 255, 0.4) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+#onboarding-modal .ob-btn-primary:hover {
+    background: #F4F4F5 !important;
+    transform: translateY(-2px) !important;
 }

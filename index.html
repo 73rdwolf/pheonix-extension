@@ -130,7 +130,7 @@
         </div>
       </div>
 
-      <div class="module-card" id="drive-target-card">
+      <div class="module-card hidden" id="drive-target-card">
         <div class="drop-overlay" id="drive-drop-zone">
           <div class="drop-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -917,18 +917,18 @@
           <input type="hidden" id="event-id"> <!-- For Edit Mode -->
 
           <div class="form-group">
-            <label>Date</label>
+            <label for="event-date-display">Date</label>
             <input type="text" id="event-date-display" readonly style="opacity:0.7" aria-label="Event Date">
           </div>
 
           <div class="form-group">
-            <label>Title</label>
+            <label for="event-title">Title</label>
             <input type="text" id="event-title" placeholder="Event Summary..." autofocus aria-label="Event Title">
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label>Time</label>
+              <label for="event-time">Time</label>
               <input type="time" id="event-time" aria-label="Event Time">
             </div>
             <div class="form-group" style="padding-top:25px;">
@@ -1006,7 +1006,7 @@
       </div>
       <div class="nexus-bookmark-form">
         <div class="form-group">
-          <label>Link URL</label>
+          <label for="nexus-bookmark-url">Link URL</label>
           <div class="input-with-action">
             <input type="url" id="nexus-bookmark-url" placeholder="https://example.com" autocomplete="off"
               aria-label="Bookmark URL">
@@ -1019,7 +1019,7 @@
           </div>
         </div>
         <div class="form-group">
-          <label>Site Name</label>
+          <label for="nexus-bookmark-name">Site Name</label>
           <div class="input-with-status">
             <input type="text" id="nexus-bookmark-name" placeholder="Site name..." autocomplete="off"
               aria-label="Bookmark Name">
@@ -1049,7 +1049,7 @@
     </div>
 
     <!-- Progress Indicator -->
-    <div class="ob-progress-container">
+    <div class="ob-progress">
       <div class="ob-progress-bar">
         <div class="ob-progress-fill" id="ob-progress-fill"></div>
       </div>

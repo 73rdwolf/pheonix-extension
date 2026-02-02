@@ -39,6 +39,9 @@ export async function initDriveUpload(containerSelector) {
     elements.percent = document.getElementById('progress-percent');
     elements.speed = document.getElementById('progress-speed');
     elements.quotaContainer = document.getElementById('drive-quota-container');
+    // Aggressively hide the entire module-card by default during init
+    if (elements.container) elements.container.classList.add('hidden');
+
 
     // Defensive: Check critical inputs
     if (!elements.fileInput || !elements.folderInput) {
@@ -62,9 +65,13 @@ export async function initDriveUpload(containerSelector) {
     chrome.storage.local.get(["isLoggedIn", "google_access_token"], (result) => {
         if (result.isLoggedIn && result.google_access_token) {
             console.log('[DriveModule] User is logged in, syncing files...');
+            elements.container?.classList.remove('hidden');
             syncDriveFiles(result.google_access_token).catch(err => {
                 console.error('[DriveModule] Initial sync failed:', err);
             });
+        } else {
+            // Force hide if definitely not logged in
+            elements.container?.classList.add('hidden');
         }
     });
 
@@ -1295,7 +1302,15 @@ function updateQuotaUI(limit, used) {
     const limitGB = (limit / 1e9).toFixed(0);
     const percent = Math.min(100, Math.round((used / limit) * 100));
 
-    container.classList.remove('hidden');
+    // Only show if user is confirmed logged in
+    chrome.storage.local.get(["isLoggedIn", "google_access_token"], (res) => {
+        if (res.isLoggedIn && res.google_access_token) {
+            container.classList.remove('hidden');
+        } else {
+            container.classList.add('hidden');
+        }
+    });
+
     text.textContent = `${usedGB}GB / ${limitGB}GB`;
 
     // 88 matches css dasharray
@@ -1326,7 +1341,17 @@ function loadQuotaFromCache() {
     const cached = localStorage.getItem('drive_quota_cache');
     if (cached) {
         const q = JSON.parse(cached);
-        updateQuotaUI(q.limit, q.used);
+        // Only render if we believe we are logged in, otherwise keep hidden
+        chrome.storage.local.get(["isLoggedIn", "google_access_token"], (res) => {
+            if (res.isLoggedIn && res.google_access_token) {
+                elements.container?.classList.remove('hidden');
+                updateQuotaUI(q.limit, q.used);
+            } else {
+                elements.container?.classList.add('hidden');
+            }
+        });
+    } else {
+        elements.container?.classList.add('hidden');
     }
 }
 

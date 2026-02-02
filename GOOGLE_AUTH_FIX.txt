@@ -32,7 +32,7 @@ To make the connection work, the Google Cloud Project MUST have these settings:
 
 - TYPE: "Web Application" (Recommended for better redirect control).
 - AUTHORIZED REDIRECT URIs:
-  Must include: https://dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org/
+  Must include: https://dpcginioaiojldfnfaldlhkacfkcaihc.chromiumapp.org/
 - SCOPES:
   - https://www.googleapis.com/auth/gmail.readonly
   - https://www.googleapis.com/auth/gmail.modify
@@ -67,7 +67,7 @@ FIX:   Reload the extension in chrome://extensions and perform a Hard Refresh
 --------------------------------------------------------------------------------
 4. CONFIGURATION SUMMARY
 --------------------------------------------------------------------------------
-Current Extension ID: dchipjncdebfhcfceidlhhlccnogbjjl
-Current Client ID:    149193288904-fkjovpramlmte3958822t0cgmlgqr7lh.apps.googleusercontent.com
-Redirect URI:         https://dchipjncdebfhcfceidlhhlccnogbjjl.chromiumapp.org/
+Current Extension ID: dpcginioaiojldfnfaldlhkacfkcaihc
+Current Client ID:    635413045241-bh93ib54pa4pd15fj9042qsij99290sp.apps.googleusercontent.com
+Redirect URI:         https://dpcginioaiojldfnfaldlhkacfkcaihc.chromiumapp.org/
 ================================================================================

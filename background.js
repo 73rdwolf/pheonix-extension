@@ -75,11 +75,13 @@ const SCOPES = [
 // ============================================
 // Cloudflare Worker Configuration (Forever Login)
 // ============================================
+const ENABLE_WORKER = true; // SET TO TRUE TO ENABLE FOREVER LOGIN FEATURES
 const WORKER_URL = "https://pheonix-auth.pixelarenaltd.workers.dev";
 const NEW_CLIENT_ID = "635413045241-bh93ib54pa4pd15fj9042qsij99290sp.apps.googleusercontent.com"; // Web App Client ID for manual capture compatibility
 
 // Exchange authorization code for tokens via Cloudflare Worker
-async function exchangeCodeForTokens(code, userEmail, redirectUri) {
+async function exchangeCodeForTokens(code, userEmail, redirectUri, isManual = false) {
+    if (!ENABLE_WORKER && !isManual) return null;
     try {
         const body = { code, email: userEmail };
         if (redirectUri) body.redirect_uri = redirectUri;
@@ -91,8 +93,9 @@ async function exchangeCodeForTokens(code, userEmail, redirectUri) {
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            console.error('[Background] Token exchange failed:', error);
+            console.error(`[Background] Worker Error: ${response.status} ${response.statusText}`);
+            const errorText = await response.text();
+            console.error('[Background] Worker Error Body:', errorText);
             return null;
         }
 
@@ -100,13 +103,14 @@ async function exchangeCodeForTokens(code, userEmail, redirectUri) {
         console.log('[Background] Token exchanged successfully via Worker');
         return data.access_token;
     } catch (e) {
-        console.error('[Background] Worker exchange error:', e);
+        console.error('[Background] Exchange Exception:', e);
         return null;
     }
 }
 
 // Refresh token via Cloudflare Worker (uses stored refresh token)
 async function refreshTokenViaWorker(userEmail) {
+    if (!ENABLE_WORKER) return null;
     if (!userEmail) {
         const storage = await chrome.storage.local.get(["google_user_email", "last_known_email"]);
         userEmail = storage.google_user_email || storage.last_known_email;
@@ -125,8 +129,7 @@ async function refreshTokenViaWorker(userEmail) {
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            console.warn('[Background] Worker refresh failed:', JSON.stringify(error));
+            // Silencing background refresh failures
             return null;
         }
 
@@ -134,7 +137,6 @@ async function refreshTokenViaWorker(userEmail) {
         console.log('[Background] Token refreshed successfully via Worker');
         return data.access_token;
     } catch (e) {
-        console.error('[Background] Worker refresh error:', e);
         return null;
     }
 }
@@ -163,7 +165,8 @@ async function startWorkerAuthFlow(interactive = true) {
 }
 
 // Token/Code Snatcher (Required for Custom Redirect URIs)
-let lastCapturedCode = null;
+const processingCodes = new Set();
+
 async function snatchTokenFromUrl(urlStr, tabId) {
     if (!urlStr || !urlStr.includes(`${chrome.runtime.id}.chromiumapp.org`)) return null;
 
@@ -172,10 +175,19 @@ async function snatchTokenFromUrl(urlStr, tabId) {
         const code = url.searchParams.get('code');
 
         if (code) {
+            // DE-DUPLICATION: Stop the racing condition!
+            if (processingCodes.has(code)) {
+                console.log("[Background] Code already being processed, skipping redundant snatch.");
+                return null;
+            }
+            processingCodes.add(code);
+            // Auto-clean after 10s
+            setTimeout(() => processingCodes.delete(code), 10000);
+
             console.log("[Background] Auth code captured! Exchanging...");
             const redirectUri = `https://${chrome.runtime.id}.chromiumapp.org/`;
 
-            const token = await exchangeCodeForTokens(code, "temp@pending.local", redirectUri);
+            const token = await exchangeCodeForTokens(code, "temp@pending.local", redirectUri, true);
             if (token) {
                 console.log("[Background] Token obtained successfully after capture.");
 
@@ -476,32 +488,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // ============================================
 
     // Start Auth flow (Using tabs.create for maximum reliability and visibility)
-    if (message.type === 'START_WORKER_AUTH') {
-        (async () => {
-            try {
-                const clientId = "635413045241-bh93ib54pa4pd15fj9042qsij99290sp.apps.googleusercontent.com";
-                // HARDCODED URI WITH SLASH
-                const redirectUri = `https://${chrome.runtime.id}.chromiumapp.org/`;
-
-                console.log('[Background] Initiating Auth Tab with URI:', redirectUri);
-
-                const authUrl = new URL('https://accounts.google.com/o/oauth2/auth');
-                authUrl.searchParams.set('client_id', clientId);
-                authUrl.searchParams.set('response_type', 'code');
-                authUrl.searchParams.set('redirect_uri', redirectUri);
-                authUrl.searchParams.set('scope', SCOPES.join(' '));
-                authUrl.searchParams.set('access_type', 'offline');
-                authUrl.searchParams.set('prompt', 'select_account consent');
-
-                chrome.tabs.create({ url: authUrl.toString() });
-                sendResponse({ success: true, message: 'Auth tab opened' });
-            } catch (err) {
-                console.error('[Background] Auth error:', err);
-                sendResponse({ success: false, error: err.message || err });
-            }
-        })();
-        return true;
-    }
+    // Start Auth flow (Using tabs.create for maximum reliability and visibility)
+    // DUPLICATE REMOVED - Handled by new launchWebAuthFlow listener at end of file
 
     // Refresh token via Worker
     if (message.type === 'REFRESH_VIA_WORKER') {
@@ -636,41 +624,18 @@ async function refreshToken(oldToken) {
                     saveAndResolveToken(workerToken, resolve);
                     return;
                 }
-                console.warn('[Background] Worker-based refresh failed, falling back to native...');
             }
-
-            // PRIORITY 2: Fallback to native Chrome identity management
-            // First, remove the invalid token from cache if provided
-            if (oldToken) {
-                console.log('[Background] Removing stale token from cache');
-                chrome.identity.removeCachedAuthToken({ token: oldToken }, () => {
-                    // Continue even if removal fails
-                    if (chrome.runtime.lastError) {
-                        console.warn('[Background] Failed to remove cached token (continuing anyway):', chrome.runtime.lastError);
-                    }
-                    // Now fetch a new one
-                    fetchNewToken(resolve);
-                });
-            } else {
-                fetchNewToken(resolve);
-            }
+            // Fallback to manual trigger required
+            resolve(null);
         } catch (e) {
-            console.error('[Background] Token refresh error:', e);
             resolve(null);
         }
     });
 }
 
 function fetchNewToken(resolve) {
-    // For perpetual connectivity, we rely solely on Chrome's native identity management
-    chrome.identity.getAuthToken({ interactive: false, scopes: SCOPES }, async (token) => {
-        if (chrome.runtime.lastError || !token) {
-            console.warn('[Background] Silent getAuthToken failed during fetchNewToken:', chrome.runtime.lastError?.message);
-            resolve(null);
-            return;
-        }
-        saveAndResolveToken(token, resolve);
-    });
+    // Native getAuthToken removed to fix 'bad client id' error
+    resolve(null);
 }
 
 
@@ -1324,7 +1289,6 @@ async function updateDomainTime(domain, deltaMs, iconUrl = null) {
     // Safeguard: Cap time at 24 hours (86400000ms) per day to prevent inflated numbers
     const maxDailyTime = 86400000; // 24 hours in milliseconds
     if (stats[domain].time > maxDailyTime) {
-        console.warn(`[Tracker] Capping time for ${domain} at 24 hours (was ${stats[domain].time}ms)`);
         stats[domain].time = maxDailyTime;
     }
 
@@ -1353,7 +1317,6 @@ async function accountForSessionTime(session, endTime = null) {
         }
     } else if (delta > MAX_DELTA_MS) {
         // If delta is too large (browser was closed/slept), cap it at max reasonable time
-        console.warn(`[Tracker] Large delta detected (${Math.round(delta / 1000 / 60)}min) for ${session.domain}, capping at ${MAX_DELTA_MS / 1000 / 60}min`);
         if (session.reasons.size > 0) {
             await updateDomainTime(session.domain, MAX_DELTA_MS);
         }
@@ -1461,7 +1424,6 @@ async function pulseTracking() {
                 await updateDomainTime(session.domain, delta, tab.favIconUrl);
             } else if (delta > MAX_DELTA_MS) {
                 // Delta too large (browser was closed/slept), cap it
-                console.warn(`[Tracker] Large delta in pulse (${Math.round(delta / 1000 / 60)}min) for ${session.domain}, capping`);
                 await updateDomainTime(session.domain, MAX_DELTA_MS, tab.favIconUrl);
             }
 
@@ -1968,3 +1930,88 @@ async function processPendingSync(token) {
         console.log('[Background] Sync complete. Remaining:', newQueue.length);
     });
 }
+
+// ============================================
+// Onboarding Auth Message Handler
+// ============================================
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'START_WORKER_AUTH') {
+        console.log('[Background] Received START_WORKER_AUTH request');
+
+        const clientId = "635413045241-bh93ib54pa4pd15fj9042qsij99290sp.apps.googleusercontent.com";
+        const redirectUri = `https://${chrome.runtime.id}.chromiumapp.org/`;
+
+        console.log('[Background] DEBUG: Extension ID:', chrome.runtime.id);
+        console.log('[Background] DEBUG: Calculated Redirect URI:', redirectUri);
+
+        console.log('[Background] Starting Standard Auth Flow (code only)...');
+
+        const authUrl = new URL('https://accounts.google.com/o/oauth2/auth');
+        authUrl.searchParams.set('client_id', clientId);
+        authUrl.searchParams.set('response_type', 'code'); // STANDARD FLOW
+        authUrl.searchParams.set('redirect_uri', redirectUri);
+        authUrl.searchParams.set('scope', SCOPES.join(' '));
+        authUrl.searchParams.set('access_type', 'offline');
+        authUrl.searchParams.set('prompt', 'select_account consent');
+
+        console.log('[Background] DEBUG: Auth URL:', authUrl.toString());
+
+        chrome.identity.launchWebAuthFlow({
+            url: authUrl.toString(),
+            interactive: true
+        }, async (responseUrl) => {
+            console.log('[Background] DEBUG: launchWebAuthFlow callback triggered');
+
+            if (chrome.runtime.lastError || !responseUrl) {
+                console.error('[Background] Auth flow failed:', chrome.runtime.lastError);
+                sendResponse({ success: false, error: chrome.runtime.lastError?.message || 'User cancelled' });
+                return;
+            }
+
+            console.log('[Background] DEBUG: Response URL:', responseUrl);
+
+            try {
+                const url = new URL(responseUrl);
+                const code = url.searchParams.get('code');
+
+                if (code) {
+                    console.log('[Background] Auth code received:', code.substring(0, 10) + '...');
+                    console.log('[Background] Exchanging via Worker with URI:', redirectUri);
+
+
+                    // Helper to handle the async exchange and response
+                    // We await it here so we can return the final result to the UI
+                    const token = await exchangeCodeForTokens(code, null, redirectUri, true);
+
+                    if (token) {
+                        console.log('[Background] Worker exchange successful!');
+                        chrome.storage.local.set({
+                            google_access_token: token,
+                            isLoggedIn: true,
+                            login_timestamp: Date.now()
+                        });
+
+                        // Notify UI
+                        chrome.runtime.sendMessage({
+                            type: 'token_refreshed_silently',
+                            token: token
+                        });
+
+                        sendResponse({ success: true, token: token });
+                    } else {
+                        console.error('[Background] Worker exchange failed.');
+                        sendResponse({ success: false, error: 'Token exchange failed' });
+                    }
+                } else {
+                    console.error('[Background] No code found in response URL');
+                    sendResponse({ success: false, error: 'No code returned' });
+                }
+            } catch (e) {
+                console.error('[Background] Auth error:', e);
+                sendResponse({ success: false, error: 'Auth error' });
+            }
+        });
+
+        return true; // Keep channel open for async response
+    }
+});
